@@ -1,0 +1,4325 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <title>BusMitra - Your Trusted Bus Booking Partner</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary-color: #f7510f;
+            --secondary-color: #0a0a0a;
+            --accent-color: #b35211;
+            --dark-bg: #0a0a0a;
+            --dark-card: rgba(20, 20, 30, 0.8);
+            --text-dark: #ffffff;
+            --text-light: #e37a63;
+            --border-color: rgba(0, 212, 255, 0.2);
+            --success-color: #a97f6c;
+            --warning-color: #ffaa00;
+            --glass-bg: rgba(255, 255, 255, 0.05);
+            --glass-border: rgba(255, 255, 255, 0.1);
+        }
+
+        [data-theme="light"] {
+            --secondary-color: #f8f9fa;
+            --text-dark: #333;
+            --text-light: #666;
+            --border-color: #e0e0e0;
+            --dark-card: #ffffff;
+            --glass-bg: rgba(255, 255, 255, 0.9);
+            --glass-border: rgba(0, 0, 0, 0.1);
+        }
+
+        body {
+            font-family: "Inter", "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+            background: radial-gradient(circle at 20% 80%,
+                    rgba(0, 212, 255, 0.15) 0%,
+                    transparent 50%),
+                radial-gradient(circle at 80% 20%,
+                    rgba(255, 107, 107, 0.15) 0%,
+                    transparent 50%),
+                radial-gradient(circle at 40% 40%,
+                    rgba(138, 43, 226, 0.1) 0%,
+                    transparent 50%),
+                linear-gradient(135deg,
+                    #0a0a0a 0%,
+                    #1a1a2e 25%,
+                    #16213e 50%,
+                    #0f3460 75%,
+                    #0a0a0a 100%);
+            background-attachment: fixed;
+            color: var(--text-dark);
+            transition: all 0.3s ease;
+            line-height: 1.6;
+            min-height: 100vh;
+            position: relative;
+            overflow-x: hidden;
+        }
+
+        [data-theme="light"] body {
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+        }
+
+        [data-theme="light"] body::before {
+            display: none;
+        }
+
+        /* Header Styles */
+        .header {
+            background: var(--glass-bg);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--glass-border);
+            color: var(--text-dark);
+            padding: 0 0;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+
+        .nav-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .nav-left {
+            display: flex;
+            align-items: center;
+            gap: 1.5rem;
+            /* Increased gap */
+            flex: 1;
+            /* Take available space */
+        }
+
+        .nav-actions {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-left: auto;
+            /* Push to the right */
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 1.8rem;
+            font-weight: bold;
+        }
+
+        .logo-image {
+            height: 70px;
+            /* Adjust as needed */
+            width: auto;
+        }
+
+        /* For mobile responsiveness */
+        @media (max-width: 768px) {
+            .logo-image {
+                height: 70px;
+            }
+
+            .logo span {
+                font-size: 1.5rem;
+            }
+        }
+
+        .nav-btn {
+            padding: 0.5rem 1rem;
+            border: 1px solid var(--border-color);
+            background: var(--glass-bg);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            color: var(--text-dark);
+            border-radius: 25px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 500;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .nav-btn::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg,
+                    transparent,
+                    rgba(0, 212, 255, 0.2),
+                    transparent);
+            transition: left 0.5s;
+        }
+
+        .nav-btn:hover::before {
+            left: 100%;
+        }
+
+        .nav-btn:hover {
+            background: rgba(0, 212, 255, 0.1);
+            border-color: var(--primary-color);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 212, 255, 0.3);
+        }
+
+        .nav-btn.primary {
+            background: linear-gradient(135deg,
+                    var(--primary-color),
+                    var(--accent-color));
+            color: white;
+            border-color: var(--primary-color);
+        }
+
+        .nav-btn.primary:hover {
+            background: linear-gradient(135deg,
+                    var(--accent-color),
+                    var(--primary-color));
+            box-shadow: 0 5px 20px rgba(0, 212, 255, 0.4);
+        }
+
+        .hamburger {
+            display: flex;
+            flex-direction: column;
+            cursor: pointer;
+            padding: 0.5rem;
+            position: relative;
+            z-index: 1002;
+        }
+
+        .hamburger span {
+            width: 25px;
+            height: 3px;
+            background: var(--text-dark);
+            margin: 3px 0;
+            transition: 0.3s;
+            border-radius: 2px;
+        }
+
+        /* Force white color for hamburger in mobile */
+        @media (max-width: 768px) {
+            .hamburger span {
+                background: rgb(85, 78, 78);
+            }
+        }
+
+        .header .hamburger span {
+            background: #63644e;
+        }
+
+        .hamburger.active span:nth-child(1) {
+            transform: rotate(-45deg) translate(-5px, 6px);
+        }
+
+        .hamburger.active span:nth-child(2) {
+            opacity: 0;
+        }
+
+        .hamburger.active span:nth-child(3) {
+            transform: rotate(45deg) translate(-5px, -6px);
+        }
+
+        /* Hero Section */
+        .hero {
+            background: transparent;
+            color: var(--text-dark);
+            padding: 1rem 0;
+            text-align: center;
+            position: relative;
+        }
+
+        .hero::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: radial-gradient(circle at 30% 20%,
+                    rgba(0, 212, 255, 0.1) 0%,
+                    transparent 50%),
+                radial-gradient(circle at 70% 80%,
+                    rgba(255, 107, 107, 0.1) 0%,
+                    transparent 50%);
+            pointer-events: none;
+        }
+
+        .hero-content {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 0 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .hero h1 {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            font-weight: 700;
+            background: linear-gradient(135deg,
+                    var(--primary-color),
+                    var(--accent-color));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            text-shadow: 0 0 30px rgba(255, 255, 255, 0.5);
+            position: relative;
+            z-index: 1;
+        }
+
+        .hero p {
+            font-size: 1.2rem;
+            margin-bottom: 2rem;
+            opacity: 0.9;
+        }
+
+        .search-container {
+            background: var(--glass-bg);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--glass-border);
+            border-radius: 20px;
+            padding: 1.5rem;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3),
+                inset 0 1px 0 rgba(255, 255, 255, 0.1);
+            margin-top: 1.5rem;
+            position: relative;
+            z-index: 1;
+        }
+
+        .search-container::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(135deg,
+                    rgba(0, 212, 255, 0.05),
+                    rgba(255, 107, 107, 0.05));
+            border-radius: 20px;
+            z-index: -1;
+        }
+
+        .search-form {
+            display: grid;
+            grid-template-columns: 1fr 1fr auto;
+            gap: 1rem;
+            align-items: end;
+        }
+
+        .form-group {
+            text-align: left;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: var(--text-dark);
+            font-weight: 600;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 1rem;
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+            background: var(--glass-bg);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            color: var(--text-dark);
+            position: relative;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 2px rgba(0, 212, 255, 0.2),
+                0 0 20px rgba(0, 212, 255, 0.1);
+            background: rgba(0, 212, 255, 0.05);
+        }
+
+        .form-input::placeholder {
+            color: var(--text-light);
+        }
+
+        .search-btn {
+            padding: 1rem 2rem;
+            background: linear-gradient(135deg,
+                    var(--primary-color),
+                    var(--accent-color));
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            height: fit-content;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 4px 15px rgba(0, 212, 255, 0.3);
+        }
+
+        .search-btn::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg,
+                    transparent,
+                    rgba(255, 255, 255, 0.2),
+                    transparent);
+            transition: left 0.5s;
+        }
+
+        .search-btn:hover::before {
+            left: 100%;
+        }
+
+        .search-btn:hover {
+            background: linear-gradient(135deg,
+                    var(--accent-color),
+                    var(--primary-color));
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0, 212, 255, 0.4);
+        }
+
+        .route-code-search {
+            margin-top: 1rem;
+            padding-top: 1rem;
+            border-top: 2px solid var(--border-color);
+        }
+
+        .route-search-container {
+            display: flex;
+            gap: 1rem;
+            align-items: end;
+        }
+
+        .route-search-container .form-input {
+            flex: 1;
+        }
+
+        .route-search-container .search-btn {
+            height: fit-content;
+            white-space: nowrap;
+        }
+
+        /* Main Content */
+        .main-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 1rem 1rem 2rem;
+        }
+
+        /* Map Section */
+        .map-section {
+            background: var(--glass-bg);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-radius: 20px;
+            padding: 2rem;
+            margin: 1rem 0;
+            /* Reduced from 2rem 0 */
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3),
+                inset 0 1px 0 rgba(255, 255, 255, 0.1);
+            border: 1px solid var(--glass-border);
+            position: relative;
+            width: calc(100% - 2rem);
+            /* Added to make it wider */
+            max-width: none;
+            /* Remove max-width constraint */
+        }
+
+        .map-section::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(135deg,
+                    rgba(0, 212, 255, 0.03),
+                    rgba(255, 107, 107, 0.03));
+            border-radius: 20px;
+            z-index: -1;
+        }
+
+        .map-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .map-placeholder {
+            background: linear-gradient(135deg, #35e14dd9 0%, #136fd8e0 100%);
+            border-radius: 10px;
+            height: 400px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .map-placeholder:hover {
+            transform: scale(1.02);
+        }
+
+        .map-placeholder-icon {
+            font-size: 4rem;
+            margin-bottom: 1rem;
+        }
+
+        .map-container {
+            height: 600px;
+            border-radius: 10px;
+            overflow: hidden;
+            display: none;
+        }
+
+        #map {
+            height: 100%;
+            width: 100%;
+        }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+            margin: 3rem 0;
+        }
+
+        .feature-card {
+            background: var(--glass-bg);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            padding: 2rem;
+            border-radius: 20px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3),
+                inset 0 1px 0 rgba(255, 255, 255, 0.1);
+            text-align: center;
+            transition: all 0.3s ease;
+            border: 1px solid var(--glass-border);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .feature-card::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(135deg,
+                    rgba(0, 212, 255, 0.05),
+                    rgba(255, 107, 107, 0.05));
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            z-index: -1;
+        }
+
+        .feature-card:hover::before {
+            opacity: 1;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4),
+                0 0 20px rgba(0, 212, 255, 0.2);
+            border-color: rgba(0, 212, 255, 0.3);
+        }
+
+        .feature-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+        }
+
+        .feature-card h3 {
+            margin-bottom: 1rem;
+            color: var(--primary-color);
+        }
+
+        /* Sidebar */
+        .sidebar {
+            position: fixed;
+            top: 0;
+            left: -400px;
+            width: 400px;
+            height: 100vh;
+            background: var(--glass-bg);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-right: 1px solid var(--glass-border);
+            box-shadow: 2px 0 30px rgba(0, 0, 0, 0.3);
+            transition: left 0.3s ease;
+            z-index: 1001;
+            overflow-y: auto;
+        }
+
+        .sidebar.active {
+            left: 0;
+        }
+
+        .sidebar-header {
+            background: var(--primary-color);
+            color: white;
+            padding: 2rem;
+            text-align: center;
+        }
+
+        .sidebar-content {
+            padding: 1rem;
+        }
+
+        .menu-section {
+            margin-bottom: 2rem;
+        }
+
+        .menu-section h3 {
+            color: var(--primary-color);
+            margin-bottom: 1rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 2px solid var(--border-color);
+        }
+
+        .menu-item {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 1rem;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-bottom: 0.5rem;
+        }
+
+        .menu-item:hover {
+            background: rgba(216, 78, 85, 0.1);
+        }
+
+        /* Modal Styles */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 2000;
+        }
+
+        .modal {
+            background: var(--glass-bg);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--glass-border);
+            border-radius: 20px;
+            padding: 2rem;
+            max-width: 500px;
+            width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
+            position: relative;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4),
+                inset 0 1px 0 rgba(255, 255, 255, 0.1);
+        }
+
+        .modal::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(135deg,
+                    rgba(0, 212, 255, 0.05),
+                    rgba(255, 107, 107, 0.05));
+            border-radius: 20px;
+            z-index: -1;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 2px solid var(--border-color);
+        }
+
+        .modal-title {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: var(--primary-color);
+        }
+
+        .close-btn {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: var(--text-light);
+            padding: 0.5rem;
+            border-radius: 50%;
+            transition: all 0.3s ease;
+        }
+
+        .close-btn:hover {
+            background: rgba(216, 78, 85, 0.1);
+            color: var(--primary-color);
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .form-group-full {
+            grid-column: 1 / -1;
+        }
+
+        .file-input-wrapper {
+            position: relative;
+            display: inline-block;
+            width: 100%;
+        }
+
+        .file-input {
+            position: absolute;
+            opacity: 0;
+            width: 100%;
+            height: 100%;
+            cursor: pointer;
+        }
+
+        .file-input-label {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 1rem;
+            border: 2px dashed var(--border-color);
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: center;
+            justify-content: center;
+        }
+
+        .file-input-label:hover {
+            border-color: var(--primary-color);
+            background: rgba(216, 78, 85, 0.05);
+        }
+
+        .btn {
+            padding: 1rem 2rem;
+            border: none;
+            border-radius: 10px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            justify-content: center;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg,
+                    var(--primary-color),
+                    var(--accent-color));
+            color: white;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 4px 15px rgba(0, 212, 255, 0.3);
+        }
+
+        .btn-primary::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg,
+                    transparent,
+                    rgba(255, 255, 255, 0.2),
+                    transparent);
+            transition: left 0.5s;
+        }
+
+        .btn-primary:hover::before {
+            left: 100%;
+        }
+
+        .btn-primary:hover {
+            background: linear-gradient(135deg,
+                    var(--accent-color),
+                    var(--primary-color));
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0, 212, 255, 0.4);
+        }
+
+        .btn-secondary {
+            background: var(--border-color);
+            color: var(--text-dark);
+        }
+
+        .btn-secondary:hover {
+            background: #d0d0d0;
+        }
+
+        .btn-full {
+            width: 100%;
+            margin-top: 1rem;
+        }
+
+        /* Dark Mode Toggle */
+
+
+
+
+
+        /* Loading Spinner */
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        /* Mobile Navigation */
+        .mobile-nav {
+            display: none;
+            background: var(--glass-bg);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-top: 1px solid var(--glass-border);
+            padding: 1rem;
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            z-index: 1000;
+            box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        .mobile-nav-buttons {
+            display: flex;
+            justify-content: space-around;
+            gap: 0.5rem;
+        }
+
+        .mobile-nav-btn {
+            flex: 1;
+            padding: 0.75rem 0.5rem;
+            background: var(--glass-bg);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            color: var(--text-dark);
+            text-decoration: none;
+            text-align: center;
+            font-size: 0.9rem;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.25rem;
+        }
+
+        .mobile-nav-btn:hover {
+            background: rgba(0, 212, 255, 0.1);
+            border-color: var(--primary-color);
+            transform: translateY(-2px);
+        }
+
+        .mobile-nav-btn.primary {
+            background: linear-gradient(135deg,
+                    var(--primary-color),
+                    var(--accent-color));
+            color: white;
+            border-color: var(--primary-color);
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .nav-actions {
+                display: none;
+            }
+
+            .mobile-nav {
+                display: block;
+            }
+
+            .hero h1 {
+                font-size: 2rem;
+            }
+
+            .search-form {
+                grid-template-columns: 1fr;
+            }
+
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+
+            .sidebar {
+                width: 100%;
+                left: -100%;
+            }
+
+            .features-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .main-content {
+                padding-bottom: 6rem;
+            }
+        }
+
+        /* Success/Error Messages */
+        .message {
+            padding: 1rem;
+            border-radius: 10px;
+            margin: 1rem 0;
+            display: none;
+        }
+
+        .message.success {
+            background: rgba(40, 167, 69, 0.1);
+            color: var(--success-color);
+            border: 1px solid var(--success-color);
+        }
+
+        .message.error {
+            background: rgba(220, 53, 69, 0.1);
+            color: #dc3545;
+            border: 1px solid #dc3545;
+        }
+
+        /* Enhanced route styling */
+        .custom-bus-marker {
+            z-index: 1000 !important;
+        }
+
+        .route-code-marker {
+            z-index: 900 !important;
+        }
+
+        .leaflet-popup-content {
+            font-family: "Inter", "Segoe UI", sans-serif;
+        }
+
+        .custom-popup {
+            padding: 0.5rem;
+        }
+
+        .custom-popup h4 {
+            margin: 0 0 0.5rem 0;
+            color: var(--primary-color);
+        }
+
+        .custom-popup p {
+            margin: 0.25rem 0;
+            font-size: 0.9rem;
+        }
+
+        /* Route highlight animation */
+        @keyframes routePulse {
+            0% {
+                opacity: 0.7;
+            }
+
+            50% {
+                opacity: 1;
+            }
+
+            100% {
+                opacity: 0.7;
+            }
+        }
+
+        .leaflet-interactive {
+            animation: routePulse 2s infinite;
+        }
+
+        /* Route Selection */
+        .route-selector {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin: 1rem 0;
+        }
+
+        .route-option {
+            padding: 1rem;
+            border: 2px solid var(--border-color);
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: center;
+        }
+
+        .route-option:hover {
+            border-color: var(--primary-color);
+            background: rgba(216, 78, 85, 0.05);
+        }
+
+        .route-option.selected {
+            border-color: var(--primary-color);
+            background: rgba(216, 78, 85, 0.1);
+        }
+
+        .stops-container {
+            margin-top: 1rem;
+        }
+
+        .stop-input {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .add-stop-btn {
+            background: var(--success-color);
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 0.9rem;
+        }
+
+        .remove-stop-btn {
+            background: #dc3545;
+            color: white;
+            border: none;
+            padding: 0.5rem;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        .route-type-selector {
+            display: flex;
+            gap: 2rem;
+            margin-bottom: 1.5rem;
+            padding: 1rem;
+            background: rgba(216, 78, 85, 0.05);
+            border-radius: 10px;
+        }
+
+        .radio-option {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            cursor: pointer;
+            font-weight: 500;
+        }
+
+        .radio-option input[type="radio"] {
+            width: 18px;
+            height: 18px;
+            accent-color: var(--primary-color);
+        }
+
+        .custom-route-form {
+            padding: 1.5rem;
+            border: 2px dashed var(--border-color);
+            border-radius: 10px;
+            background: rgba(216, 78, 85, 0.02);
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="nav-container">
+            <div class="nav-left">
+                <div class="hamburger" id="hamburger">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </div>
+                <div class="logo">
+                    <img src="https://ik.imagekit.io/plppakwkt/Black_and_Yellow_Travel_Agency_Logo__1_-removebg-preview.png?updatedAt=1758227608496"
+                        alt="BusMitra Logo" class="logo-image">
+                    <span>BusMitra</span>
+                </div>
+                <div class="nav-actions">
+                    <button class="nav-btn" id="homeBtn">🏠 Home</button>
+                    <button class="nav-btn" id="driverLoginBtn">👨‍💼 Driver Login</button>
+                    <button class="nav-btn primary" id="driverSignupBtn">
+                        ➕ Driver Signup
+                    </button>
+                </div>
+            </div>
+    </header>
+
+    <!-- Hero Section -->
+    <section class="hero">
+        <div class="hero-content">
+            <h1>Book Your Journey</h1>
+            <p>Safe, reliable, and comfortable bus travel across India</p>
+
+            <div class="search-container">
+                <form class="search-form" id="searchForm">
+                    <div class="form-group">
+                        <label for="fromCity">From</label>
+                        <input type="text" id="fromCity" class="form-input" placeholder="Enter departure" required />
+                    </div>
+                    <div class="form-group">
+                        <label for="toCity">To</label>
+                        <input type="text" id="toCity" class="form-input" placeholder="Enter destination" required />
+                    </div>
+                    <button type="submit" class="search-btn">🔍 Search Buses</button>
+
+
+                </form>
+
+                <div class="route-code-search">
+                    <div class="form-group">
+                        <label for="routeCode">Or Search by Route Code</label>
+                        <div class="route-search-container">
+                            <input type="text" id="routeCode" class="form-input"
+                                placeholder="Enter route code ( IDR1 IDR2 IDR3 IDR4 IDR5 IDR6 )" />
+                            <button type="button" class="search-btn" onclick="searchByRouteCode()">
+                                🗺️ Find Route
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <!-- Map Section -->
+        <div class="map-section">
+            <div class="map-header">
+                <h2>🗺️ Live Bus Tracking</h2>
+                <button class="btn btn-primary" id="loadMapBtn">
+                    📍 Load Interactive Map
+                </button>
+            </div>
+
+            <div class="map-placeholder" id="mapPlaceholder">
+                <div class="map-placeholder-icon">🗺️</div>
+                <h3>Interactive Route Map</h3>
+                <p>
+                    Click "Load Interactive Map" to view real-time bus locations and
+                    routes
+                </p>
+            </div>
+
+            <div class="map-container" id="mapContainer">
+                <div id="map"></div>
+            </div>
+        </div>
+        <!-- Features Grid -->
+        <div class="features-grid">
+            <div class="feature-card">
+                <div class="feature-icon">🛡️</div>
+                <h3>Safe & Secure</h3>
+                <p>
+                    All our buses are regularly sanitized and follow strict safety
+                    protocols for your peace of mind.
+                </p>
+            </div>
+
+            <div class="feature-card">
+                <div class="feature-icon">⚡</div>
+                <h3>Real-time Tracking</h3>
+                <p>
+                    Track your bus in real-time and get live updates about arrival times
+                    and route changes.
+                </p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">💳</div>
+                <h3>Easy Booking</h3>
+                <p>
+                    Book your tickets online with multiple payment options and instant
+                    confirmation.
+                </p>
+            </div>
+        </div>
+    </main>
+
+    <!-- Sidebar -->
+    <div class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <div style="
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+          ">
+                <div>
+                    <h2>Menu</h2>
+                    <p>Navigation & Settings</p>
+                </div>
+                <button class="close-btn" id="closeSidebar" style="
+              background: rgba(255, 255, 255, 0.2);
+              border: none;
+              color: white;
+              font-size: 1.5rem;
+              padding: 0.5rem;
+              border-radius: 50%;
+              cursor: pointer;
+            ">
+                    ✕
+                </button>
+            </div>
+        </div>
+        <div class="sidebar-content">
+            <div class="menu-section">
+                <h3>🚗 Services</h3>
+                <div class="menu-item" data-action="bus-booking">🚌 Bus Booking</div>
+                <div class="menu-item" data-action="track-bus">📍 Track My Bus</div>
+            </div>
+
+            <div class="menu-section">
+                <h3>📞 Support & Info</h3>
+                <div class="menu-item" data-action="faq">❓ FAQ</div>
+                <div class="menu-item" data-action="customer-service">
+                    💬 Customer Support
+                </div>
+                <div class="menu-item" data-action="about">ℹ️ About BusMitra</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Driver Signup Modal -->
+    <div class="modal-overlay" id="signupModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h2 class="modal-title">Driver Registration</h2>
+                <button class="close-btn" id="closeSignupModal">✕</button>
+            </div>
+
+            <form id="driverSignupForm">
+                <div class="message" id="signupMessage"></div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="driverName">Full Name *</label>
+                        <input type="text" id="driverName" name="name" class="form-input" />
+                    </div>
+                    <div class="form-group">
+                        <label for="driverPhone">Phone Number *</label>
+                        <input type="tel" id="driverPhone" name="phone" class="form-input" />
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="driverWhatsapp">WhatsApp Number</label>
+                        <input type="tel" id="driverWhatsapp" name="whatsapp" class="form-input" />
+                    </div>
+                    <div class="form-group">
+                        <label for="driverPassword">Password *</label>
+                        <input type="password" id="driverPassword" name="password" class="form-input" required />
+                    </div>
+                </div>
+
+                <div class="form-group form-group-full">
+                    <label for="driverType">Driver Type *</label>
+                    <select id="driverType" name="driverType" class="form-input" onchange="toggleDriverTypeFields()">
+                        <option value="">Select Driver Type</option>
+                        <option value="bus">Bus Driver</option>
+                        <option value="auto">Auto Rickshaw Driver</option>
+                        <option value="other">Other</option>
+                    </select>
+                </div>
+
+                <div id="otherDriverType" class="form-group form-group-full" style="display: none">
+                    <label for="customDriverType">Specify Driver Type *</label>
+                    <input type="text" id="customDriverType" name="customDriverType" class="form-input"
+                        placeholder="e.g., Taxi Driver, Tempo Driver" />
+                </div>
+
+                <div class="form-row" id="vehicleDetails">
+                    <div class="form-group">
+                        <label for="vehicleNumber"><span id="vehicleLabel">Vehicle Number</span> *</label>
+                        <input type="text" id="vehicleNumber" name="vehicleNumber" class="form-input"
+                            placeholder="e.g., MP09AB1234" required />
+                    </div>
+                    <div class="form-group">
+                        <label for="vehicleColor"><span id="colorLabel">Vehicle Color</span> *</label>
+                        <input type="text" id="vehicleColor" name="vehicleColor" class="form-input"
+                            placeholder="e.g., Red & White" />
+                    </div>
+                </div>
+
+                <div class="form-group form-group-full">
+                    <label for="vehicleIdentification"><span id="identificationLabel">Vehicle Identification Mark</span>
+                        *</label>
+                    <input type="text" id="vehicleIdentification" name="vehicleIdentification" class="form-input"
+                        placeholder="e.g., Blue stripe, Company logo" />
+                </div>
+
+                <div class="form-group form-group-full" id="routeSelection">
+                    <label>Route Selection * (For Bus Drivers Only)</label>
+                    <div class="route-type-selector">
+                        <label class="radio-option">
+                            <input type="radio" name="routeType" value="existing" checked
+                                onchange="toggleRouteType()" />
+                            <span>Select Existing Route</span>
+                        </label>
+                        <label class="radio-option">
+                            <input type="radio" name="routeType" value="custom" onchange="toggleRouteType()" />
+                            <span>Create New Route</span>
+                        </label>
+                    </div>
+
+                    <div id="existingRoutes" class="route-selector">
+                        <div class="route-option" data-route="railway-station-medical-college" data-code="JBP1">
+                            <strong>Railway Station → Medical College (JBP1)</strong><br />
+                            <small>8 km • 25 min</small>
+                        </div>
+                        <div class="route-option" data-route="madan-mahal-sadar" data-code="JBP2">
+                            <strong>Madan Mahal → Sadar (JBP2)</strong><br />
+                            <small>6 km • 20 min</small>
+                        </div>
+                        <div class="route-option" data-route="wright-town-civil-lines" data-code="JBP3">
+                            <strong>Wright Town → Civil Lines (JBP3)</strong><br />
+                            <small>5 km • 15 min</small>
+                        </div>
+                        <div class="route-option" data-route="napier-town-ranjhi" data-code="JBP4">
+                            <strong>Napier Town → Ranjhi (JBP4)</strong><br />
+                            <small>7 km • 22 min</small>
+                        </div>
+                        <div class="route-option" data-route="adhartal-vijay-nagar" data-code="JBP5">
+                            <strong>Adhartal → Vijay Nagar (JBP5)</strong><br />
+                            <small>9 km • 28 min</small>
+                        </div>
+                        <div class="route-option" data-route="khamaria-gorakhpur" data-code="JBP6">
+                            <strong>Khamaria → Gorakhpur (JBP6)</strong><br />
+                            <small>10 km • 30 min</small>
+                        </div>
+                        <div class="route-option" data-route="indore-railway-vijay-nagar" data-code="IDR1">
+                            <strong>Railway Station → Vijay Nagar (IDR1)</strong><br />
+                            <small>8 km • 25 min</small>
+                        </div>
+                        <div class="route-option" data-route="indore-airport-palasia" data-code="IDR2">
+                            <strong>Airport → Palasia (IDR2)</strong><br />
+                            <small>12 km • 30 min</small>
+                        </div>
+                        <div class="route-option" data-route="indore-rajwada-sapna-sangeeta" data-code="IDR3">
+                            <strong>Rajwada → Sapna Sangeeta (IDR3)</strong><br />
+                            <small>6 km • 20 min</small>
+                        </div>
+                        <div class="route-option" data-route="indore-bhawarkuan-rasta-patti" data-code="IDR4">
+                            <strong>Bhawarkuan → Rasta Patti (IDR4)</strong><br />
+                            <small>7 km • 22 min</small>
+                        </div>
+                        <div class="route-option" data-route="indore-scheme-54-scheme-78" data-code="IDR5">
+                            <strong>Scheme 54 → Scheme 78 (IDR5)</strong><br />
+                            <small>5 km • 15 min</small>
+                        </div>
+                        <div class="route-option" data-route="indore-treasure-island-c21" data-code="IDR6">
+                            <strong>Treasure Island → C21 (IDR6)</strong><br />
+                            <small>4 km • 12 min</small>
+                        </div>
+                        <div class="route-option" data-route="indore-super-corridor-it-park" data-code="IDR7">
+                            <strong>Super Corridor → IT Park (IDR7)</strong><br />
+                            <small>10 km • 28 min</small>
+                        </div>
+                        <div class="route-option" data-route="indore-annapurna-ganesh-bazar" data-code="IDR8">
+                            <strong>Annapurna → Ganesh Bazar (IDR8)</strong><br />
+                            <small>3 km • 10 min</small>
+                        </div>
+                        <div class="route-option" data-route="indore-siyaganj-lig" data-code="IDR9">
+                            <strong>Siyaganj → LIG (IDR9)</strong><br />
+                            <small>4 km • 13 min</small>
+                        </div>
+                        <div class="route-option" data-route="indore-geeta-bhawan-chhatribagh" data-code="IDR10">
+                            <strong>Geeta Bhawan → Chhatribagh (IDR10)</strong><br />
+                            <small>5 km • 16 min</small>
+                        </div>
+                        <!-- Add more route options as needed -->
+
+
+                    </div>
+
+                    <div id="customRoute" class="custom-route-form" style="display: none">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="routeFrom">From City *</label>
+                                <input type="text" id="routeFrom" class="form-input" placeholder="e.g., Bhopal" />
+                            </div>
+                            <div class="form-group">
+                                <label for="routeTo">To City *</label>
+                                <input type="text" id="routeTo" class="form-input" placeholder="e.g., Gwalior" />
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="routeDistance">Distance (km) *</label>
+                                <input type="number" id="routeDistance" class="form-input" placeholder="e.g., 250" />
+                            </div>
+                            <div class="form-group">
+                                <label for="routeDuration">Duration *</label>
+                                <input type="text" id="routeDuration" class="form-input" placeholder="e.g., 5h 30m" />
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="routeCodeInput">Route Code *</label>
+                            <input type="text" id="routeCodeInput" class="form-input" placeholder="e.g., BHO1, GWL1"
+                                style="text-transform: uppercase" />
+                        </div>
+                    </div>
+
+                    <input type="hidden" id="selectedRoute" />
+                    <input type="hidden" id="selectedRouteCode" />
+                </div>
+
+                <div class="form-group form-group-full">
+                    <label>Bus Stops *</label>
+                    <div class="stops-container" id="stopsContainer">
+                        <div class="stop-input">
+                            <input type="text" class="form-input" placeholder="Enter stop name" />
+                            <button type="button" class="remove-stop-btn" onclick="removeStop(this)">
+                                ✕
+                            </button>
+                        </div>
+                    </div>
+                    <button type="button" class="add-stop-btn" onclick="addStop()">
+                        + Add Stop
+                    </button>
+                </div>
+
+                <button type="submit" class="btn btn-primary btn-full" id="signupSubmitBtn">
+                    Register as Driver
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Driver Login Modal -->
+    <div class="modal-overlay" id="loginModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h2 class="modal-title">Driver Login</h2>
+                <button class="close-btn" id="closeLoginModal">✕</button>
+            </div>
+
+            <form id="driverLoginForm">
+                <div class="message" id="loginMessage"></div>
+
+                <div class="form-group">
+                    <label for="loginPhone">Phone Number</label>
+                    <input type="tel" id="loginPhone" name="phone" class="form-input" required />
+                </div>
+
+                <div class="form-group">
+                    <label for="loginPassword">Password</label>
+                    <input type="password" id="loginPassword" name="password" class="form-input" required />
+                </div>
+
+                <button type="submit" class="btn btn-primary btn-full" id="loginSubmitBtn">
+                    Login
+                </button>
+
+                <div style="text-align: center; margin-top: 1rem">
+                    <a href="#" style="color: var(--primary-color); text-decoration: none">Forgot Password?</a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Mobile Navigation -->
+    <div class="mobile-nav">
+        <div class="mobile-nav-buttons">
+            <button class="mobile-nav-btn" id="mobileHomeBtn">🏠<br />Home</button>
+            <button class="mobile-nav-btn" id="mobileDriverLoginBtn">
+                👨‍💼<br />Driver Login
+            </button>
+            <button class="mobile-nav-btn primary" id="mobileDriverSignupBtn">
+                ➕<br />Driver Signup
+            </button>
+        </div>
+    </div>
+
+    <!-- FAQ Modal -->
+    <div class="modal-overlay" id="faqModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h2 class="modal-title">❓ Frequently Asked Questions</h2>
+                <button class="close-btn" onclick="hideModal('faqModal')">✕</button>
+            </div>
+            <div class="modal-content">
+                <div style="text-align: center; padding: 2rem">
+                    <div style="font-size: 3rem; margin-bottom: 1rem">🚧</div>
+                    <h3>FAQ Section Coming Soon!</h3>
+                    <p style="margin: 1rem 0; color: var(--text-light)">
+                        We're preparing comprehensive answers to help you navigate
+                        BusMitra easily.
+                    </p>
+                    <p style="margin: 1rem 0">
+                        For immediate assistance, please contact our customer support.
+                    </p>
+                    <button class="btn btn-primary" onclick="showCustomerService(); hideModal('faqModal');"
+                        style="margin-top: 1rem">
+                        📞 Contact Support
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add this HTML for the location permission banner -->
+    <div id="locationBanner"
+        style="display: none; position: fixed; top: 80px; left: 50%; transform: translateX(-50%); background: var(--glass-bg); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border: 1px solid var(--glass-border); border-radius: 15px; padding: 1rem 1.5rem; box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3); z-index: 1500; max-width: 90%; width: 350px; text-align: center; animation: slideDown 0.5s ease-out;">
+        <div style="display: flex; align-items: center; gap: 1rem;">
+            <div style="font-size: 1.5rem;">📍</div>
+            <div style="flex: 1; text-align: left;">
+                <div style="font-weight: bold; margin-bottom: 0.25rem;">Enable Location</div>
+                <div style="font-size: 0.9rem; color: var(--text-light);">Get nearby buses & better directions</div>
+            </div>
+            <div style="display: flex; gap: 0.5rem;">
+                <button onclick="enableLocationFromBanner()"
+                    style="background: var(--primary-color); color: white; border: none; padding: 0.5rem 1rem; border-radius: 8px; cursor: pointer; font-size: 0.9rem; font-weight: bold;">
+                    Enable
+                </button>
+                <button onclick="dismissLocationBanner()"
+                    style="background: transparent; color: var(--text-light); border: none; padding: 0.5rem; cursor: pointer; font-size: 1.2rem;">
+                    ✕
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <style>
+        @keyframes slideDown {
+            from {
+                transform: translateX(-50%) translateY(-100%);
+                opacity: 0;
+            }
+
+            to {
+                transform: translateX(-50%) translateY(0);
+                opacity: 1;
+            }
+        }
+
+        @keyframes slideUp {
+            from {
+                transform: translateX(-50%) translateY(0);
+                opacity: 1;
+            }
+
+            to {
+                transform: translateX(-50%) translateY(-100%);
+                opacity: 0;
+            }
+        }
+    </style>
+
+    <!-- Customer Service Modal -->
+    <div class="modal-overlay" id="customerServiceModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h2 class="modal-title">📞 Customer Support</h2>
+                <button class="close-btn" onclick="hideModal('customerServiceModal')">
+                    ✕
+                </button>
+            </div>
+            <div class="modal-content">
+                <div style="padding: 1rem">
+                    <div style="text-align: center; margin-bottom: 2rem">
+                        <div style="font-size: 3rem; margin-bottom: 1rem">💬</div>
+                        <h3>We're Here to Help!</h3>
+                    </div>
+
+                    <div style="
+                background: var(--glass-bg);
+                padding: 1.5rem;
+                border-radius: 10px;
+                margin-bottom: 1.5rem;
+              ">
+                        <h4 style="color: var(--primary-color); margin-bottom: 1rem">
+                            📧 Developer Contact
+                        </h4>
+                        <p style="font-size: 1.1rem; font-weight: bold">
+                            mosingh8878@gmail.com
+                        </p>
+                        <button class="btn btn-primary"
+                            onclick="window.open('mailto:mosingh8878@gmail.com?subject=BusMitra Support Request', '_blank')"
+                            style="margin-top: 1rem; width: 100%">
+                            📧 Send Email
+                        </button>
+                    </div>
+
+                    <div style="
+                background: var(--glass-bg);
+                padding: 1.5rem;
+                border-radius: 10px;
+              ">
+                        <h4 style="color: var(--primary-color); margin-bottom: 1rem">
+                            🛠️ We Can Help With:
+                        </h4>
+                        <ul style="list-style: none; padding: 0">
+                            <li style="
+                    padding: 0.5rem 0;
+                    border-bottom: 1px solid var(--border-color);
+                  ">
+                                🐛 Technical issues & bug reports
+                            </li>
+                            <li style="
+                    padding: 0.5rem 0;
+                    border-bottom: 1px solid var(--border-color);
+                  ">
+                                ✨ Feature requests & suggestions
+                            </li>
+                            <li style="
+                    padding: 0.5rem 0;
+                    border-bottom: 1px solid var(--border-color);
+                  ">
+                                ❓ General inquiries about BusMitra
+                            </li>
+                            <li style="padding: 0.5rem 0">
+                                🚌 Driver registration assistance
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- About Modal -->
+    <div class="modal-overlay" id="aboutModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h2 class="modal-title">ℹ️ About BusMitra</h2>
+                <button class="close-btn" onclick="hideModal('aboutModal')">✕</button>
+            </div>
+            <div class="modal-content" style="max-height: 70vh; overflow-y: auto">
+                <div style="padding: 1rem">
+                    <div style="text-align: center; margin-bottom: 2rem">
+                        <div style="font-size: 3rem; margin-bottom: 1rem">🚌</div>
+                        <h3>Your Trusted Transportation Partner</h3>
+                        <p style="color: var(--text-light)">
+                            Connecting passengers with reliable drivers across Jabalpur and
+                            beyond
+                        </p>
+                    </div>
+
+                    <div style="
+                background: var(--glass-bg);
+                padding: 1.5rem;
+                border-radius: 10px;
+                margin-bottom: 1.5rem;
+              ">
+                        <h4 style="color: var(--primary-color); margin-bottom: 1rem">
+                            🌟 Key Features
+                        </h4>
+                        <ul style="list-style: none; padding: 0">
+                            <li style="padding: 0.5rem 0; display: flex; align-items: center">
+                                <span style="margin-right: 0.5rem">📍</span> Real-time bus
+                                tracking with live location updates
+                            </li>
+                            <li style="padding: 0.5rem 0; display: flex; align-items: center">
+                                <span style="margin-right: 0.5rem">🚗</span> Multi-vehicle
+                                support (Buses, Auto-rickshaws, Taxis)
+                            </li>
+                            <li style="padding: 0.5rem 0; display: flex; align-items: center">
+                                <span style="margin-right: 0.5rem">🗺️</span> Interactive route
+                                mapping with 6+ Jabalpur routes
+                            </li>
+                            <li style="padding: 0.5rem 0; display: flex; align-items: center">
+                                <span style="margin-right: 0.5rem">👨‍💼</span> Driver
+                                registration system with verification
+                            </li>
+                            <li style="padding: 0.5rem 0; display: flex; align-items: center">
+                                <span style="margin-right: 0.5rem">📞</span> Direct
+                                communication via call/WhatsApp
+                            </li>
+                        </ul>
+                    </div>
+
+                    <div style="
+                background: var(--glass-bg);
+                padding: 1.5rem;
+                border-radius: 10px;
+                margin-bottom: 1.5rem;
+              ">
+                        <h4 style="color: var(--primary-color); margin-bottom: 1rem">
+                            🗺️ How to Use BusMitra
+                        </h4>
+                        <ol style="padding-left: 1rem">
+                            <li style="padding: 0.5rem 0">
+                                Search for buses using the route finder
+                            </li>
+                            <li style="padding: 0.5rem 0">
+                                Click "Auto/Rickshaw" or "Other" to find nearby drivers
+                            </li>
+                            <li style="padding: 0.5rem 0">
+                                View driver details by clicking on map markers
+                            </li>
+                            <li style="padding: 0.5rem 0">
+                                Contact drivers directly through the app
+                            </li>
+                            <li style="padding: 0.5rem 0">
+                                Track your journey in real-time
+                            </li>
+                        </ol>
+                    </div>
+
+                    <div style="
+                background: var(--glass-bg);
+                padding: 1.5rem;
+                border-radius: 10px;
+                margin-bottom: 1.5rem;
+              ">
+                        <h4 style="color: var(--primary-color); margin-bottom: 1rem">
+                            📍 Coverage Areas
+                        </h4>
+                        <p style="margin-bottom: 1rem">
+                            Currently serving Jabalpur with routes connecting:
+                        </p>
+                        <div style="
+                  display: grid;
+                  grid-template-columns: 1fr 1fr;
+                  gap: 0.5rem;
+                  font-size: 0.9rem;
+                ">
+                            <div>• Railway Station ↔ Medical College (JBP1)</div>
+                            <div>• Madan Mahal ↔ Sadar (JBP2)</div>
+                            <div>• Wright Town ↔ Civil Lines (JBP3)</div>
+                            <div>• Napier Town ↔ Ranjhi (JBP4)</div>
+                            <div>• Adhartal ↔ Vijay Nagar (JBP5)</div>
+                            <div>• Khamaria ↔ Gorakhpur (JBP6)</div>
+                        </div>
+                    </div>
+
+                    <div style="
+                background: var(--glass-bg);
+                padding: 1.5rem;
+                border-radius: 10px;
+              ">
+                        <h4 style="color: var(--primary-color); margin-bottom: 1rem">
+                            🚀 For Drivers
+                        </h4>
+                        <p style="margin-bottom: 1rem">Register as a driver to:</p>
+                        <ul style="list-style: none; padding: 0">
+                            <li style="padding: 0.25rem 0">
+                                ✅ Add your vehicle to our network
+                            </li>
+                            <li style="padding: 0.25rem 0">✅ Create custom routes</li>
+                            <li style="padding: 0.25rem 0">✅ Share your live location</li>
+                            <li style="padding: 0.25rem 0">✅ Connect with passengers</li>
+                            <li style="padding: 0.25rem 0">
+                                ✅ Build reputation through ratings
+                            </li>
+                        </ul>
+                        <button class="btn btn-primary" onclick="hideModal('aboutModal'); showModal('signupModal');"
+                            style="margin-top: 1rem; width: 100%">
+                            ➕ Register as Driver
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Overlay -->
+    <div class="modal-overlay" id="overlay"></div>
+
+    <script>
+        // Configuration - Using the provided ngrok URL
+        const API_BASE_URL = "https://296479d25069.ngrok-free.app";
+
+        // API Endpoints
+        const API_ENDPOINTS = {
+            DRIVER_SIGNUP: `${API_BASE_URL}/signup`,
+            DRIVER_LOGIN: `${API_BASE_URL}/login`,
+            DRIVER_LOGOUT: `${API_BASE_URL}/logout`,
+            DRIVER_PROFILE: `${API_BASE_URL}/profile`,
+            UPDATE_LOCATION: `${API_BASE_URL}/location`,
+            GET_ACTIVE_DRIVERS: `${API_BASE_URL}/active-drivers`,
+            BUS_ROUTES: `${API_BASE_URL}/routes`,
+            BUS_TRACKING: `${API_BASE_URL}/track`,
+            SEARCH_BUSES: `${API_BASE_URL}/search`,
+            DRIVER_STATUS: `${API_BASE_URL}/status`,
+            REAL_TIME_UPDATES: `${API_BASE_URL}/updates`,
+        };
+
+        // Global variables
+        let map = null;
+        let mapLoaded = false;
+        let currentTheme = localStorage.getItem("theme") || "light";
+        let userLocation = null;
+        let activeRoute = null;
+        let currentRouteLayer = null;
+        let busMarkers = [];
+        let customRoutes = JSON.parse(localStorage.getItem("customRoutes")) || [];
+        let locationUpdateInterval = null;
+        let realTimeUpdateInterval = null;
+        let isDriverLoggedIn = false;
+        let currentDriverData = null;
+        let activeDriversFromServer = [];
+        let websocketConnection = null;
+
+        // Real-time driver location tracking and management
+        let activeDrivers = []; // Will be populated from server
+
+        // Initialize real-time updates
+        async function initializeRealTimeUpdates() {
+            try {
+                // Fetch active drivers from server
+                await fetchActiveDrivers();
+
+                // Start periodic updates every 30 seconds
+                realTimeUpdateInterval = setInterval(fetchActiveDrivers, 30000);
+
+                // Initialize WebSocket connection for real-time updates
+                initializeWebSocket();
+
+                console.log("Real-time updates initialized");
+            } catch (error) {
+                console.error("Failed to initialize real-time updates:", error);
+                // Fallback to local dummy data for demo
+                loadDummyDriverData();
+            }
+        }
+
+        // Route definitions with coordinates and codes - Jabalpur & Indore City Routes
+        // Route definitions with coordinates and codes - Jabalpur & Indore City Routes
+        let routes = {
+            // Jabalpur Routes (existing)
+            "railway-station-medical-college": {
+                name: "Railway Station → Medical College",
+                code: "JBP1",
+                color: "#FFD700", // Bright yellow
+                weight: 6,
+                opacity: 0.9,
+                coordinates: [
+                    [23.1815, 79.9864], // Railway Station
+                    [23.175, 79.995],
+                    [23.168, 80.002],
+                    [23.162, 80.01], // Medical College
+                ],
+                buses: [
+                    { id: "JBP001", position: [23.175, 79.99], status: "On Route" },
+                    { id: "JBP002", position: [23.165, 80.005], status: "On Route" },
+                ],
+            },
+
+            // INDIORE CITY BUS ROUTES - Yellow routes on roads
+            "indore-railway-vijay-nagar": {
+                name: "Railway Station → Vijay Nagar",
+                code: "IDR1",
+                color: "#FFD700", // Bright yellow
+                weight: 5,
+                opacity: 0.85,
+                coordinates: [
+                    [22.7173, 75.8682], [22.718, 75.87], [22.719, 75.872], [22.72, 75.874],
+                    [22.721, 75.876], [22.722, 75.878], [22.723, 75.88], [22.724, 75.882],
+                    [22.725, 75.883], [22.726, 75.884], [22.727, 75.885], [22.728, 75.886],
+                    [22.73, 75.887], [22.731, 75.888], [22.732, 75.889], [22.733, 75.89]
+                ],
+                buses: [{ id: "IDR001", position: [22.725, 75.88], status: "On Route" }],
+            },
+            "indore-airport-palasia": {
+                name: "Airport → Palasia",
+                code: "IDR2",
+                color: "#FFA500", // Orange-yellow
+                weight: 5,
+                opacity: 0.85,
+                coordinates: [
+                    [22.7219, 75.8013], [22.721, 75.81], [22.72, 75.82], [22.719, 75.83],
+                    [22.718, 75.84], [22.717, 75.85], [22.716, 75.855], [22.715, 75.857]
+                ],
+                buses: [{ id: "IDR002", position: [22.718, 75.835], status: "On Route" }],
+            },
+            "indore-rajwada-sapna-sangeeta": {
+                name: "Rajwada → Sapna Sangeeta",
+                code: "IDR3",
+                color: "#FFD700", // Bright yellow
+                weight: 5,
+                opacity: 0.85,
+                coordinates: [
+                    [22.7196, 75.8577], [22.722, 75.86], [22.725, 75.862], [22.728, 75.865],
+                    [22.73, 75.868], [22.732, 75.87], [22.735, 75.872], [22.738, 75.874]
+                ],
+                buses: [{ id: "IDR003", position: [22.728, 75.865], status: "On Route" }],
+            },
+            "indore-bhawarkuan-rasta-patti": {
+                name: "Bhawarkuan → Rasta Patti",
+                code: "IDR4",
+                color: "#FFA500", // Orange-yellow
+                weight: 5,
+                opacity: 0.85,
+                coordinates: [
+                    [22.698, 75.865], [22.702, 75.868], [22.705, 75.87], [22.708, 75.872],
+                    [22.71, 75.874], [22.712, 75.876], [22.715, 75.878], [22.718, 75.88]
+                ],
+                buses: [{ id: "IDR004", position: [22.708, 75.872], status: "On Route" }],
+            },
+            "indore-scheme-54-scheme-78": {
+                name: "Scheme 54 → Scheme 78",
+                code: "IDR5",
+                color: "#FFD700", // Bright yellow
+                weight: 5,
+                opacity: 0.85,
+                coordinates: [
+                    [22.735, 75.892], [22.738, 75.895], [22.74, 75.898], [22.743, 75.9],
+                    [22.745, 75.902], [22.748, 75.905], [22.75, 75.908], [22.753, 75.91],
+                    [22.755, 75.912]
+                ],
+                buses: [{ id: "IDR005", position: [22.745, 75.902], status: "On Route" }],
+            },
+            // Add more routes with similar structure...
+            "indore-treasure-island-c21": {
+                name: "Treasure Island → C21 Mall",
+                code: "IDR6",
+                color: "#FFA500",
+                weight: 5,
+                opacity: 0.85,
+                coordinates: [
+                    [22.748, 75.895], [22.75, 75.898], [22.752, 75.9], [22.754, 75.902],
+                    [22.756, 75.905], [22.758, 75.908], [22.76, 75.91], [22.762, 75.912],
+                    [22.763, 75.915]
+                ],
+                buses: [{ id: "IDR006", position: [22.755, 75.905], status: "On Route" }],
+            }
+            // Continue adding more routes...
+        };
+
+        // Fetch active drivers from server
+        async function fetchActiveDrivers() {
+            try {
+                const response = await makeAuthenticatedRequest(
+                    API_ENDPOINTS.GET_ACTIVE_DRIVERS
+                );
+
+                if (response.ok) {
+                    const data = await response.json();
+                    activeDriversFromServer = data.drivers || [];
+                    activeDrivers = activeDriversFromServer;
+
+                    // Update map if loaded
+                    if (mapLoaded) {
+                        updateDriverMarkersOnMap();
+                    }
+
+                    console.log(
+                        `Updated ${activeDrivers.length} active drivers from server`
+                    );
+                } else {
+                    throw new Error("Failed to fetch active drivers");
+                }
+            } catch (error) {
+                console.error("Error fetching active drivers:", error);
+                // Keep existing data on error
+            }
+        }
+
+        // Load dummy data as fallback
+        function loadDummyDriverData() {
+            activeDrivers = [
+                {
+                    id: "DR001",
+                    name: "Rajesh Kumar",
+                    phone: "+91-9876543210",
+                    whatsapp: "+91-9876543210",
+                    driverType: "bus",
+                    vehicleNumber: "MP09AB1234",
+                    vehicleColor: "Blue & White",
+                    vehicleIdentification: "Blue stripe on side",
+                    route: "Railway Station → Medical College",
+                    routeCode: "JBP1",
+                    position: [23.175, 79.99],
+                    status: "Online",
+                    rating: 4.5,
+                    trips: 245,
+                    lastUpdated: new Date().toISOString(),
+                },
+                {
+                    id: "DR002",
+                    name: "Suresh Sharma",
+                    phone: "+91-9876543211",
+                    whatsapp: "+91-9876543211",
+                    driverType: "auto",
+                    vehicleNumber: "MP09C5678",
+                    vehicleColor: "Yellow & Black",
+                    vehicleIdentification: "Yellow top, black body",
+                    position: [23.182, 79.985],
+                    status: "Online",
+                    rating: 4.2,
+                    trips: 189,
+                    lastUpdated: new Date().toISOString(),
+                },
+            ];
+        }
+
+        // DOM Elements
+        const hamburger = document.getElementById("hamburger");
+        const sidebar = document.getElementById("sidebar");
+        const themeToggle = document.getElementById("themeToggle");
+        const driverSignupBtn = document.getElementById("driverSignupBtn");
+        const driverLoginBtn = document.getElementById("driverLoginBtn");
+        const signupModal = document.getElementById("signupModal");
+        const loginModal = document.getElementById("loginModal");
+        const loadMapBtn = document.getElementById("loadMapBtn");
+        const mapPlaceholder = document.getElementById("mapPlaceholder");
+        const mapContainer = document.getElementById("mapContainer");
+
+        // Route definitions with coordinates and codes - Jabalpur City Routes
+
+
+        // Load custom routes from localStorage
+        function loadCustomRoutes() {
+            customRoutes.forEach((route) => {
+                const routeId = `${route.from}-${route.to}`
+                    .toLowerCase()
+                    .replace(/\s+/g, "-");
+                routes[routeId] = route;
+            });
+        }
+
+        // WebSocket connection for real-time updates
+        function initializeWebSocket() {
+            try {
+                const wsUrl =
+                    API_BASE_URL.replace("https://", "wss://").replace(
+                        "http://",
+                        "ws://"
+                    ) + "/ws";
+                websocketConnection = new WebSocket(wsUrl);
+
+                websocketConnection.onopen = function (event) {
+                    console.log("WebSocket connected for real-time updates");
+
+                    // Send authentication if driver is logged in
+                    if (isDriverLoggedIn && currentDriverData) {
+                        websocketConnection.send(
+                            JSON.stringify({
+                                type: "auth",
+                                token: localStorage.getItem("driverToken"),
+                                driverId: currentDriverData.id,
+                            })
+                        );
+                    }
+                };
+
+                websocketConnection.onmessage = function (event) {
+                    try {
+                        const data = JSON.parse(event.data);
+                        handleWebSocketMessage(data);
+                    } catch (error) {
+                        console.error("Error parsing WebSocket message:", error);
+                    }
+                };
+
+                websocketConnection.onclose = function (event) {
+                    console.log(
+                        "WebSocket connection closed, attempting to reconnect..."
+                    );
+                    setTimeout(initializeWebSocket, 5000); // Reconnect after 5 seconds
+                };
+
+                websocketConnection.onerror = function (error) {
+                    console.error("WebSocket error:", error);
+                };
+            } catch (error) {
+                console.error("Failed to initialize WebSocket:", error);
+            }
+        }
+
+        // Handle WebSocket messages
+        function handleWebSocketMessage(data) {
+            switch (data.type) {
+                case "driver_location_update":
+                    updateDriverLocation(data.driverId, data.location);
+                    break;
+                case "driver_status_change":
+                    updateDriverStatus(data.driverId, data.status);
+                    break;
+                case "new_driver_online":
+                    addNewDriverToMap(data.driver);
+                    break;
+                case "driver_offline":
+                    removeDriverFromMap(data.driverId);
+                    break;
+                default:
+                    console.log("Unknown WebSocket message type:", data.type);
+            }
+        }
+
+        // Start location tracking for logged-in drivers
+        function startLocationTracking() {
+            if (!isDriverLoggedIn || !navigator.geolocation) {
+                return;
+            }
+
+            console.log("Starting location tracking for driver");
+
+            // Initial location update
+            updateDriverLocationToServer();
+
+            // Set up continuous location tracking
+            locationUpdateInterval = setInterval(
+                updateDriverLocationToServer,
+                15000
+            ); // Every 15 seconds
+
+            // Also use watchPosition for more accurate tracking
+            if (navigator.geolocation) {
+                navigator.geolocation.watchPosition(
+                    (position) => {
+                        const newLocation = [
+                            position.coords.latitude,
+                            position.coords.longitude,
+                        ];
+
+                        // Only update if location changed significantly (more than 10 meters)
+                        if (
+                            !userLocation ||
+                            calculateDistance(userLocation, newLocation) > 10
+                        ) {
+                            userLocation = newLocation;
+                            updateDriverLocationToServer();
+                        }
+                    },
+                    (error) => {
+                        console.error("Location tracking error:", error);
+                    },
+                    {
+                        enableHighAccuracy: true,
+                        timeout: 10000,
+                        maximumAge: 5000,
+                    }
+                );
+            }
+        }
+
+        // Stop location tracking
+        function stopLocationTracking() {
+            if (locationUpdateInterval) {
+                clearInterval(locationUpdateInterval);
+                locationUpdateInterval = null;
+            }
+            console.log("Location tracking stopped");
+        }
+
+        // Update driver location to server
+        async function updateDriverLocationToServer() {
+            if (!isDriverLoggedIn || !userLocation || !currentDriverData) {
+                return;
+            }
+
+            try {
+                const locationData = {
+                    driverId: currentDriverData.id,
+                    latitude: userLocation[0],
+                    longitude: userLocation[1],
+                    timestamp: new Date().toISOString(),
+                    accuracy: 10, // Default accuracy
+                    status: "Online",
+                };
+
+                const response = await makeAuthenticatedRequest(
+                    API_ENDPOINTS.UPDATE_LOCATION,
+                    {
+                        method: "POST",
+                        body: JSON.stringify(locationData),
+                    }
+                );
+
+                if (response.ok) {
+                    console.log("Location updated successfully");
+                } else {
+                    console.error("Failed to update location");
+                }
+            } catch (error) {
+                console.error("Error updating location:", error);
+            }
+        }
+
+        // Initialize app
+        document.addEventListener("DOMContentLoaded", function () {
+            // Always send a GET request to ngrok for active drivers on page load
+            fetch(API_BASE_URL + "/public/active-drivers")
+                .then(res => {
+                    console.log("SIMPLE GET /public/active-drivers status:", res.status);
+                    return res.json();
+                })
+                .then(data => {
+                    // Optionally log or use data
+                    console.log("SIMPLE GET /public/active-drivers data:", data);
+                })
+                .catch(err => {
+                    console.error("SIMPLE GET /public/active-drivers error:", err);
+                });
+            initializeLocationPermissions();
+            initializeTheme();
+            setupEventListeners();
+            populateCityOptions();
+            loadCustomRoutes();
+
+            // Always start polling for active drivers if not logged in
+            const token = localStorage.getItem("driverToken");
+            function fetchAndShowActiveDrivers() {
+                console.log("Polling /public/active-drivers...");
+                fetch(API_BASE_URL + "/public/active-drivers")
+                    .then(res => {
+                        console.log("GET /public/active-drivers status:", res.status);
+                        return res.json();
+                    })
+                    .then(data => {
+                        if (data && data.drivers && Array.isArray(data.drivers)) {
+                            showActiveDriversOnMap(data.drivers);
+                        }
+                    })
+                    .catch(err => {
+                        console.error("Failed to fetch active drivers:", err);
+                    });
+            }
+            if (!token) {
+                fetchAndShowActiveDrivers(); // Initial fetch
+                window.activeDriversInterval = setInterval(fetchAndShowActiveDrivers, 10000); // Update every 10s
+            } else {
+                if (window.activeDriversInterval) {
+                    clearInterval(window.activeDriversInterval);
+                }
+            }
+
+            // Initialize real-time updates
+            initializeRealTimeUpdates();
+
+            // Check for existing login
+            checkExistingLogin();
+
+            // Early location permission check and request for mobile
+
+        });
+
+        // Initialize location permissions early
+        function initializeLocationPermissions() {
+            if (!navigator.geolocation) {
+                console.log("Geolocation not supported");
+                return;
+            }
+
+            // For mobile devices, show a prompt to enable location early
+            if (/Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)) {
+                setTimeout(() => {
+                    showEarlyLocationPrompt();
+                }, 2000);
+            }
+        }
+
+        // Show early location prompt for mobile users
+        function showEarlyLocationPrompt() {
+            // Don't show if map is already loaded
+            if (mapLoaded) {
+                return;
+            }
+
+            const banner = document.getElementById('locationBanner');
+            if (banner) {
+                banner.style.display = 'block';
+
+                // Auto-dismiss after 8 seconds
+                setTimeout(() => {
+                    dismissLocationBanner();
+                }, 8000);
+            }
+        }
+        // Enable location from banner
+        function enableLocationFromBanner() {
+            dismissLocationBanner();
+            requestLocationAggressively();
+        }
+
+        // Dismiss location banner
+        function dismissLocationBanner() {
+            const banner = document.getElementById('locationBanner');
+            if (banner) {
+                banner.style.animation = 'slideUp 0.3s ease-in';
+                setTimeout(() => {
+                    banner.style.display = 'none';
+                }, 300);
+            }
+        }
+
+        // Check for existing login
+        function checkExistingLogin() {
+            const driverToken = localStorage.getItem("driverToken");
+            const driverData = localStorage.getItem("driverData");
+
+            if (driverToken && driverData) {
+                try {
+                    currentDriverData = JSON.parse(driverData);
+                    isDriverLoggedIn = true;
+                    updateUIForLoggedInDriver(currentDriverData);
+
+                    // Start location tracking for logged-in driver
+                    startLocationTracking();
+
+                    console.log(
+                        "Driver auto-login successful:",
+                        currentDriverData.name
+                    );
+                } catch (error) {
+                    console.error("Error parsing stored driver data:", error);
+                    localStorage.removeItem("driverToken");
+                    localStorage.removeItem("driverData");
+                }
+            }
+        }
+
+        // Theme Management
+        function initializeTheme() {
+            currentTheme = "light";
+            document.documentElement.setAttribute("data-theme", currentTheme);
+            localStorage.setItem("theme", currentTheme)
+        }
+
+        function toggleTheme() {
+            currentTheme = currentTheme === "light" ? "dark" : "light";
+            document.documentElement.setAttribute("data-theme", currentTheme);
+            localStorage.setItem("theme", currentTheme);
+        }
+
+        // Event Listeners
+        function setupEventListeners() {
+            // Navigation
+            hamburger.addEventListener("click", toggleSidebar);
+            //themeToggle.addEventListener("click", toggleTheme);
+
+            // Sidebar close button
+            document
+                .getElementById("closeSidebar")
+                .addEventListener("click", closeSidebar);
+
+            // Close sidebar when clicking outside
+            document.addEventListener("click", function (event) {
+                const sidebar = document.getElementById("sidebar");
+                const hamburger = document.getElementById("hamburger");
+
+                if (
+                    sidebar.classList.contains("active") &&
+                    !sidebar.contains(event.target) &&
+                    !hamburger.contains(event.target)
+                ) {
+                    closeSidebar();
+                }
+            });
+
+            // Modals
+            driverSignupBtn.addEventListener("click", () =>
+                showModal("signupModal")
+            );
+            driverLoginBtn.addEventListener("click", () => showModal("loginModal"));
+
+            document
+                .getElementById("closeSignupModal")
+                .addEventListener("click", () => hideModal("signupModal"));
+            document
+                .getElementById("closeLoginModal")
+                .addEventListener("click", () => hideModal("loginModal"));
+
+            // Forms
+            document
+                .getElementById("driverSignupForm")
+                .addEventListener("submit", handleDriverSignup);
+            document
+                .getElementById("driverLoginForm")
+                .addEventListener("submit", handleDriverLogin);
+            document
+                .getElementById("searchForm")
+                .addEventListener("submit", handleBusSearch);
+
+            // Map
+            loadMapBtn.addEventListener("click", loadMap);
+            mapPlaceholder.addEventListener("click", loadMap);
+
+            // Route selection
+            document.querySelectorAll(".route-option").forEach((option) => {
+                option.addEventListener("click", selectRoute);
+            });
+
+            // Menu items
+            document.querySelectorAll(".menu-item").forEach((item) => {
+                item.addEventListener("click", handleMenuAction);
+            });
+
+            // File input
+            document
+                .getElementById("driverPhoto")
+                .addEventListener("change", handleFileUpload);
+
+            // Auto/Rickshaw button
+            //document
+            //.getElementById("showAutoRickshawBtn")
+            //.addEventListener("click", showAutoRickshawDrivers);
+
+            // Other drivers button
+            //document
+            // .getElementById("showOtherDriversBtn")
+            //.addEventListener("click", showOtherDrivers);
+
+            // Mobile navigation
+            document
+                .getElementById("mobileHomeBtn")
+                .addEventListener("click", () => window.scrollTo(0, 0));
+            document
+                .getElementById("mobileDriverLoginBtn")
+                .addEventListener("click", () => showModal("loginModal"));
+            document
+                .getElementById("mobileDriverSignupBtn")
+                .addEventListener("click", () => showModal("signupModal"));
+        }
+
+        // Sidebar Management
+        function toggleSidebar() {
+            sidebar.classList.toggle("active");
+            hamburger.classList.toggle("active");
+        }
+
+        function closeSidebar() {
+            sidebar.classList.remove("active");
+            hamburger.classList.remove("active");
+        }
+
+        // Modal Management
+        function showModal(modalId) {
+            document.getElementById(modalId).style.display = "flex";
+        }
+
+        function hideModal(modalId) {
+            document.getElementById(modalId).style.display = "none";
+            clearForm(modalId);
+        }
+
+        function clearForm(modalId) {
+            const form = document.querySelector(`#${modalId} form`);
+            if (form) {
+                form.reset();
+                hideMessage(modalId);
+            }
+        }
+
+        // Message Management
+        function showMessage(modalId, message, type = "success") {
+            const messageEl = document.querySelector(
+                `#${modalId.replace("Modal", "Message")}`
+            );
+            if (messageEl) {
+                messageEl.textContent = message;
+                messageEl.className = `message ${type}`;
+                messageEl.style.display = "block";
+            }
+        }
+
+        function hideMessage(modalId) {
+            const messageEl = document.querySelector(
+                `#${modalId.replace("Modal", "Message")}`
+            );
+            if (messageEl) {
+                messageEl.style.display = "none";
+            }
+        }
+
+        // Route Selection
+        function selectRoute(event) {
+            document
+                .querySelectorAll(".route-option")
+                .forEach((opt) => opt.classList.remove("selected"));
+            event.currentTarget.classList.add("selected");
+            document.getElementById("selectedRoute").value =
+                event.currentTarget.dataset.route;
+            document.getElementById("selectedRouteCode").value =
+                event.currentTarget.dataset.code;
+        }
+
+        // Toggle between existing and custom route
+        function toggleRouteType() {
+            const routeType = document.querySelector(
+                'input[name="routeType"]:checked'
+            ).value;
+            const existingRoutes = document.getElementById("existingRoutes");
+            const customRoute = document.getElementById("customRoute");
+
+            if (routeType === "existing") {
+                existingRoutes.style.display = "grid";
+                customRoute.style.display = "none";
+            } else {
+                existingRoutes.style.display = "none";
+                customRoute.style.display = "block";
+            }
+        }
+
+        // Toggle driver type fields
+        function toggleDriverTypeFields() {
+            const driverType = document.getElementById("driverType").value;
+            const otherDriverType = document.getElementById("otherDriverType");
+            const routeSelection = document.getElementById("routeSelection");
+            const vehicleLabel = document.getElementById("vehicleLabel");
+            const colorLabel = document.getElementById("colorLabel");
+            const identificationLabel = document.getElementById(
+                "identificationLabel"
+            );
+
+            // Show/hide other driver type field
+            if (driverType === "other") {
+                otherDriverType.style.display = "block";
+                document.getElementById("customDriverType").required = true;
+            } else {
+                otherDriverType.style.display = "none";
+                document.getElementById("customDriverType").required = false;
+            }
+
+            // Show/hide route selection for bus drivers only
+            if (driverType === "bus") {
+                routeSelection.style.display = "block";
+                document.getElementById("selectedRoute").required = true;
+                document.getElementById("selectedRouteCode").required = true;
+            } else {
+                routeSelection.style.display = "none";
+                document.getElementById("selectedRoute").required = false;
+                document.getElementById("selectedRouteCode").required = false;
+            }
+
+            // Update labels based on driver type
+            switch (driverType) {
+                case "bus":
+                    vehicleLabel.textContent = "Bus Number";
+                    colorLabel.textContent = "Bus Color";
+                    identificationLabel.textContent = "Bus Identification Mark";
+                    break;
+                case "auto":
+                    vehicleLabel.textContent = "Auto Number";
+                    colorLabel.textContent = "Auto Color";
+                    identificationLabel.textContent = "Auto Identification Mark";
+                    break;
+                default:
+                    vehicleLabel.textContent = "Vehicle Number";
+                    colorLabel.textContent = "Vehicle Color";
+                    identificationLabel.textContent = "Vehicle Identification Mark";
+            }
+        }
+
+        // Search by route code
+        // Search by route code
+        function searchByRouteCode() {
+            const routeCode = document
+                .getElementById("routeCode")
+                .value.toUpperCase()
+                .trim();
+
+            if (!routeCode) {
+                alert("Please enter a route code");
+                return;
+            }
+
+            // Find route by code (search in both Jabalpur and Indore routes)
+            const foundRoute = Object.keys(routes).find(
+                (key) => routes[key].code === routeCode
+            );
+
+            if (foundRoute) {
+                // Load map and show route
+                loadMap();
+                setTimeout(() => {
+                    selectRouteById(foundRoute);
+                    getUserLocationAndShowRoute(foundRoute);
+
+                    // Show route info
+                    const route = routes[foundRoute];
+                    alert(`Route Found: ${route.name}\nCode: ${route.code}\nClick "Load Interactive Map" to view the route on map.`);
+                }, 1000);
+            } else {
+                // Show available route codes
+                const availableCodes = Object.values(routes)
+                    .map((r) => r.code)
+                    .filter((code, index, self) => self.indexOf(code) === index)
+                    .sort()
+                    .join(", ");
+
+                alert(
+                    `Route with code "${routeCode}" not found.\n\nAvailable route codes:\n${availableCodes}\n\nJabalpur routes: JBP1-JBP6\nIndore routes: IDR1-IDR30`
+                );
+            }
+        }
+
+        // Show auto/rickshaw drivers
+
+        // Show other drivers
+
+
+        // Get user location and show route
+        function getUserLocationAndShowRoute(routeId) {
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        userLocation = [
+                            position.coords.latitude,
+                            position.coords.longitude,
+                        ];
+                        showUserLocationOnMap();
+                        selectRouteById(routeId);
+                    },
+                    (error) => {
+                        console.log(
+                            "Location access denied, showing route without user location"
+                        );
+                        selectRouteById(routeId);
+                    }
+                );
+            } else {
+                selectRouteById(routeId);
+            }
+        }
+
+        // Select route by ID
+        // Select route by ID with better highlighting
+        function selectRouteById(routeId) {
+            clearMap();
+            const route = routes[routeId];
+            if (!route) return;
+
+            activeRoute = routeId;
+
+            // Draw route path with highlighted appearance
+            currentRouteLayer = L.polyline(route.coordinates, {
+                color: "#FF0000", // Red for highlighted route
+                weight: 8,
+                opacity: 0.95,
+                lineCap: 'round',
+                lineJoin: 'round'
+            }).addTo(map);
+
+            // Add bus markers for this route
+            if (route.buses) {
+                route.buses.forEach((bus) => {
+                    const marker = L.marker(bus.position, {
+                        icon: L.divIcon({
+                            html: `<div style="background: #FF0000; color: white; padding: 6px 12px; 
+                            border-radius: 15px; font-size: 14px; font-weight: bold; 
+                            border: 2px solid white; box-shadow: 0 3px 12px rgba(0,0,0,0.5);">
+                            🚌 ${bus.id}
+                          </div>`,
+                            className: "custom-bus-marker",
+                            iconSize: [70, 35],
+                            iconAnchor: [35, 17],
+                        }),
+                    }).addTo(map);
+
+                    marker.bindPopup(`
+                <div class="custom-popup">
+                    <h4>Bus ${bus.id}</h4>
+                    <p><strong>Route:</strong> ${route.name} (${route.code})</p>
+                    <p><strong>Status:</strong> ${bus.status}</p>
+                    <p><strong>Next Stop:</strong> 15 minutes</p>
+                    <button onclick="trackBus('${bus.id}')" 
+                            style="background: #FFD700; color: #000; border: none; 
+                                   padding: 0.5rem 1rem; border-radius: 5px; cursor: pointer; 
+                                   margin-top: 0.5rem; font-weight: bold;">
+                        📍 Track This Bus
+                    </button>
+                </div>
+            `);
+
+                    busMarkers.push(marker);
+                });
+            }
+
+            // Fit map to route with padding
+            map.fitBounds(currentRouteLayer.getBounds(), { padding: [50, 50] });
+
+            // Show route info
+            showRouteInfo(route);
+        }
+
+        // Show route information
+        function showRouteInfo(route) {
+            const infoDiv = document.createElement('div');
+            infoDiv.style.cssText = `
+        position: absolute;
+        top: 100px;
+        right: 20px;
+        background: rgba(255, 215, 0, 0.95);
+        padding: 1rem;
+        border-radius: 10px;
+        z-index: 1000;
+        max-width: 250px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+        border: 2px solid #000;
+    `;
+
+            infoDiv.innerHTML = `
+        <h3 style="margin: 0 0 0.5rem 0; color: #000;">${route.name}</h3>
+        <p style="margin: 0.25rem 0;"><strong>Route Code:</strong> ${route.code}</p>
+        <p style="margin: 0.25rem 0;"><strong>Active Buses:</strong> ${route.buses ? route.buses.length : 0}</p>
+        <button onclick="this.parentElement.remove()" 
+                style="background: #000; color: #FFD700; border: none; padding: 0.5rem 1rem; 
+                       border-radius: 5px; cursor: pointer; margin-top: 0.5rem;">
+            Close
+        </button>
+    `;
+
+            map.getContainer().appendChild(infoDiv);
+        }
+
+        // Bus Stops Management
+        function addStop() {
+            const container = document.getElementById("stopsContainer");
+            const stopDiv = document.createElement("div");
+            stopDiv.className = "stop-input";
+            stopDiv.innerHTML = `
+                <input type="text" class="form-input" placeholder="Enter stop name" required>
+                <button type="button" class="remove-stop-btn" onclick="removeStop(this)">✕</button>
+            `;
+            container.appendChild(stopDiv);
+        }
+
+        function removeStop(button) {
+            const container = document.getElementById("stopsContainer");
+            if (container.children.length > 1) {
+                button.parentElement.remove();
+            }
+        }
+
+        // File Upload Handler
+        function handleFileUpload(event) {
+            const file = event.target.files[0];
+            const label = event.target.nextElementSibling;
+
+            if (file) {
+                label.innerHTML = `📷 ${file.name}`;
+                label.style.color = "var(--success-color)";
+            } else {
+                label.innerHTML = "📷 Upload Driver Photo";
+                label.style.color = "";
+            }
+        }
+
+        // Driver Signup Handler
+        async function handleDriverSignup(event) {
+            event.preventDefault();
+
+            const submitBtn = document.getElementById("signupSubmitBtn");
+            const originalText = submitBtn.innerHTML;
+
+            try {
+                submitBtn.innerHTML = '<div class="loading"></div> Registering...';
+                submitBtn.disabled = true;
+
+                // Collect form data
+                const form = document.getElementById("driverSignupForm");
+                const formData = new FormData(form);
+
+                // Collect additional data
+                const stops = Array.from(
+                    document.querySelectorAll("#stopsContainer input")
+                )
+                    .map((input) => input.value)
+                    .filter((value) => value.trim());
+                const routeType = document.querySelector(
+                    'input[name="routeType"]:checked'
+                ).value;
+
+                let routeData = {};
+                let routeCode = "";
+
+                if (routeType === "existing") {
+                    if (!document.getElementById("selectedRoute").value) {
+                        throw new Error("Please select a route");
+                    }
+                    routeData.route = document.getElementById("selectedRoute").value;
+                    routeCode = document.getElementById("selectedRouteCode").value;
+                } else {
+                    // Custom route
+                    const routeFrom = document.getElementById("routeFrom").value;
+                    const routeTo = document.getElementById("routeTo").value;
+                    const routeDistance =
+                        document.getElementById("routeDistance").value;
+                    const routeDuration =
+                        document.getElementById("routeDuration").value;
+                    const customRouteCode = document
+                        .getElementById("routeCodeInput")
+                        .value.toUpperCase();
+
+                    if (
+                        !routeFrom ||
+                        !routeTo ||
+                        !routeDistance ||
+                        !routeDuration ||
+                        !customRouteCode
+                    ) {
+                        throw new Error("Please fill all custom route fields");
+                    }
+
+                    // Check if route code already exists
+                    const existingRoute = Object.values(routes).find(
+                        (r) => r.code === customRouteCode
+                    );
+                    if (existingRoute) {
+                        throw new Error(
+                            `Route code "${customRouteCode}" already exists. Please choose a different code.`
+                        );
+                    }
+
+                    routeData = {
+                        isCustom: true,
+                        from: routeFrom,
+                        to: routeTo,
+                        distance: routeDistance,
+                        duration: routeDuration,
+                        code: customRouteCode,
+                    };
+                    routeCode = customRouteCode;
+
+                    // Create new route and add to system
+                    const newRouteId =
+                        `${routeFrom.toLowerCase()}-${routeTo.toLowerCase()}`.replace(
+                            /\s+/g,
+                            "-"
+                        );
+                    const newRoute = {
+                        name: `${routeFrom} → ${routeTo}`,
+                        code: customRouteCode,
+                        color: getRandomColor(),
+                        coordinates: generateRouteCoordinates(routeFrom, routeTo),
+                        buses: [],
+                        isCustom: true,
+                        distance: routeDistance,
+                        duration: routeDuration,
+                    };
+
+                    // Add to routes and save to localStorage
+                    routes[newRouteId] = newRoute;
+                    customRoutes.push(newRoute);
+                    localStorage.setItem("customRoutes", JSON.stringify(customRoutes));
+
+                    // Add to existing routes selector for future drivers
+                    addCustomRouteToSelector(newRouteId, newRoute);
+                }
+
+                const driverType = document.getElementById("driverType").value;
+                const customDriverType =
+                    document.getElementById("customDriverType").value;
+
+                // Add all form fields to FormData
+                formData.append("name", document.getElementById("driverName").value);
+                formData.append(
+                    "phone",
+                    document.getElementById("driverPhone").value
+                );
+                formData.append(
+                    "whatsapp",
+                    document.getElementById("driverWhatsapp").value
+                );
+                formData.append(
+                    "password",
+                    document.getElementById("driverPassword").value
+                );
+                formData.append("driverType", driverType);
+                formData.append("customDriverType", customDriverType);
+                formData.append(
+                    "vehicleNumber",
+                    document.getElementById("vehicleNumber").value
+                );
+                formData.append(
+                    "vehicleColor",
+                    document.getElementById("vehicleColor").value
+                );
+                formData.append(
+                    "vehicleIdentification",
+                    document.getElementById("vehicleIdentification").value
+                );
+
+                // Only add route data for bus drivers
+                if (driverType === "bus") {
+                    formData.append("routeData", JSON.stringify(routeData));
+                    formData.append("routeCode", routeCode);
+                    formData.append("stops", JSON.stringify(stops));
+                }
+
+                // Validation
+                if (driverType === "bus" && stops.length === 0) {
+                    throw new Error("Please add at least one bus stop");
+                }
+
+                if (driverType === "other" && !customDriverType.trim()) {
+                    throw new Error("Please specify your driver type");
+                }
+
+                // Send to backend using URLSearchParams format
+                const response = await fetch(API_ENDPOINTS.DRIVER_SIGNUP, {
+                    method: "POST",
+                    body: new URLSearchParams(formData),
+                });
+
+                const text = await response.text();
+
+                if (response.ok) {
+                    showMessage(
+                        "signupModal",
+                        `Driver registration successful! ${routeType === "custom"
+                            ? 'New route "' +
+                            routeCode +
+                            '" has been added to the system.'
+                            : ""
+                        } ${text}`,
+                        "success"
+                    );
+
+                    setTimeout(() => {
+                        hideModal("signupModal");
+                    }, 5000);
+                } else {
+                    throw new Error(text || "Registration failed");
+                }
+            } catch (error) {
+                console.error("Signup error:", error);
+                showMessage(
+                    "signupModal",
+                    error.message || "Registration failed. Please try again.",
+                    "error"
+                );
+            } finally {
+                submitBtn.innerHTML = originalText;
+                submitBtn.disabled = false;
+            }
+        }
+
+        // Helper functions for custom routes
+        function getRandomColor() {
+            const colors = [
+                "#00d4ff",
+                "#ff6b6b",
+                "#8a2be2",
+                "#00ff88",
+                "#ffaa00",
+                "#ff1493",
+                "#00bfff",
+                "#32cd32",
+            ];
+            return colors[Math.floor(Math.random() * colors.length)];
+        }
+
+        // Removed floating particles animation for better performance
+
+        function generateRouteCoordinates(from, to) {
+            // Simple coordinate generation based on city names
+            // In a real app, you'd use a geocoding service
+            const cityCoords = {
+                jabalpur: [23.1815, 79.9864],
+                rewa: [24.5333, 81.2964],
+                maihar: [23.8433, 80.7567],
+                indore: [22.7196, 75.8577],
+                ujjain: [23.1793, 75.7849],
+                bhopal: [23.2599, 77.4126],
+                gwalior: [26.2183, 78.1828],
+                sagar: [23.8388, 78.7378],
+            };
+
+            const fromCoord = cityCoords[from.toLowerCase()] || [23.1815, 79.9864];
+            const toCoord = cityCoords[to.toLowerCase()] || [23.1815, 79.9864];
+
+            // Generate intermediate points
+            const midLat = (fromCoord[0] + toCoord[0]) / 2;
+            const midLng = (fromCoord[1] + toCoord[1]) / 2;
+
+            return [fromCoord, [midLat, midLng], toCoord];
+        }
+
+        function addCustomRouteToSelector(routeId, route) {
+            const existingRoutes = document.getElementById("existingRoutes");
+            const routeOption = document.createElement("div");
+            routeOption.className = "route-option";
+            routeOption.dataset.route = routeId;
+            routeOption.dataset.code = route.code;
+            routeOption.innerHTML = `
+                <strong>${route.name} (${route.code})</strong><br>
+                <small>${route.distance} km • ${route.duration}</small>
+            `;
+            routeOption.addEventListener("click", selectRoute);
+            existingRoutes.appendChild(routeOption);
+        }
+
+        // Driver Login Handler
+        async function handleDriverLogin(event) {
+            event.preventDefault();
+
+            const submitBtn = document.getElementById("loginSubmitBtn");
+            const originalText = submitBtn.innerHTML;
+
+            try {
+                submitBtn.innerHTML = '<div class="loading"></div> Logging in...';
+                submitBtn.disabled = true;
+
+                const form = document.getElementById("driverLoginForm");
+                const formData = new FormData(form);
+
+                // Add username field with phone value for backend compatibility
+                formData.append(
+                    "username",
+                    document.getElementById("loginPhone").value
+                );
+
+                const response = await fetch(API_ENDPOINTS.DRIVER_LOGIN, {
+                    method: "POST",
+                    body: new URLSearchParams(formData),
+                });
+
+                const text = await response.text();
+
+                if (response.ok) {
+                    let jsonResponse = {};
+                    let driverData = null;
+                    try {
+                        jsonResponse = JSON.parse(text);
+                        driverData = jsonResponse.driver || jsonResponse;
+                    } catch (e) {
+                        driverData = {
+                            name: "Driver",
+                            phone: document.getElementById("loginPhone").value,
+                            id: "DR" + Date.now(),
+                        };
+                    }
+
+                    // Store authentication data (only if token exists)
+                    if (jsonResponse.token) {
+                        localStorage.setItem("driverToken", jsonResponse.token);
+                    }
+                    localStorage.setItem("driverData", JSON.stringify(driverData));
+
+                    // Update global state
+                    currentDriverData = driverData;
+                    isDriverLoggedIn = true;
+
+                    showMessage("loginModal", `Login successful!`, "success");
+
+                    setTimeout(() => {
+                        hideModal("loginModal");
+                        updateUIForLoggedInDriver(driverData);
+
+                        // Start location tracking immediately after login
+                        startLocationTracking();
+
+                        // Refresh active drivers to include this driver
+                        fetchActiveDrivers();
+
+                        console.log("Driver logged in successfully:", driverData.name);
+                    }, 1500);
+                } else {
+                    throw new Error(text || "Login failed");
+                }
+            } catch (error) {
+                console.error("Login error:", error);
+                showMessage(
+                    "loginModal",
+                    error.message || "Login failed. Please check your credentials.",
+                    "error"
+                );
+            } finally {
+                submitBtn.innerHTML = originalText;
+                submitBtn.disabled = false;
+            }
+        }
+
+        // Update UI for logged in driver
+        function updateUIForLoggedInDriver(driverData) {
+            // Update navigation buttons
+            driverLoginBtn.innerHTML = `👨‍💼 ${driverData.name} (Online)`;
+            driverSignupBtn.style.display = "none";
+
+            // Add logout functionality
+            driverLoginBtn.onclick = () => {
+                if (
+                    confirm("Do you want to logout? This will stop location tracking.")
+                ) {
+                    logoutDriver();
+                }
+            };
+
+            // Update mobile navigation
+            const mobileLoginBtn = document.getElementById("mobileDriverLoginBtn");
+            if (mobileLoginBtn) {
+                mobileLoginBtn.innerHTML = `👨‍💼<br>${driverData.name.split(" ")[0]}`;
+                mobileLoginBtn.onclick = () => {
+                    if (confirm("Do you want to logout?")) {
+                        logoutDriver();
+                    }
+                };
+            }
+        }
+
+        // Logout driver function
+        async function logoutDriver() {
+            try {
+                // Stop location tracking
+                stopLocationTracking();
+
+                // Notify server about logout
+                if (currentDriverData) {
+                    await makeAuthenticatedRequest(API_ENDPOINTS.DRIVER_LOGOUT, {
+                        method: "POST",
+                        body: JSON.stringify({ driverId: currentDriverData.id }),
+                    });
+                }
+
+                // Clear local storage
+                localStorage.removeItem("driverToken");
+                localStorage.removeItem("driverData");
+
+                // Reset global state
+                isDriverLoggedIn = false;
+                currentDriverData = null;
+                userLocation = null;
+
+                // Close WebSocket connection
+                if (websocketConnection) {
+                    websocketConnection.close();
+                    websocketConnection = null;
+                }
+
+                console.log("Driver logged out successfully");
+
+                // Reload page to reset UI
+                location.reload();
+            } catch (error) {
+                console.error("Logout error:", error);
+                // Force logout even if server request fails
+                localStorage.removeItem("driverToken");
+                localStorage.removeItem("driverData");
+                location.reload();
+            }
+        }
+
+        // Bus Search Handler
+        async function handleBusSearch(event) {
+            event.preventDefault();
+
+            const fromCity = document.getElementById("fromCity").value;
+            const toCity = document.getElementById("toCity").value;
+
+            try {
+                const response = await fetch(
+                    `${API_ENDPOINTS.SEARCH_BUSES}?from=${encodeURIComponent(
+                        fromCity
+                    )}&to=${encodeURIComponent(toCity)}`
+                );
+                const buses = await response.json();
+
+                if (response.ok) {
+                    displaySearchResults(buses);
+                } else {
+                    alert("No buses found for this route");
+                }
+            } catch (error) {
+                console.error("Search error:", error);
+                alert("Search failed. Please try again.");
+            }
+        }
+
+        // Display search results
+        function displaySearchResults(buses) {
+            // Create results section
+            let resultsSection = document.getElementById("searchResults");
+            if (!resultsSection) {
+                resultsSection = document.createElement("div");
+                resultsSection.id = "searchResults";
+                resultsSection.className = "search-results";
+                document.querySelector(".main-content").appendChild(resultsSection);
+            }
+
+            resultsSection.innerHTML = `
+                <h2>Available Buses</h2>
+                <div class="bus-list">
+                    ${buses
+                    .map(
+                        (bus) => `
+                        <div class="bus-card">
+                            <h3>${bus.busNumber}</h3>
+                            <p>Route: ${bus.route}</p>
+                            <p>Driver: ${bus.driverName}</p>
+                            <p>Status: ${bus.status}</p>
+                            <button class="btn btn-primary">Book Now</button>
+                        </div>
+                    `
+                    )
+                    .join("")}
+                </div>
+            `;
+        }
+
+        // Map Management
+        function loadMap() {
+            if (mapLoaded) return;
+
+            mapPlaceholder.style.display = "none";
+            mapContainer.style.display = "block";
+            loadMapBtn.innerHTML = "🔄 Loading Map...";
+
+            // Initialize Leaflet map centered on Indore
+            map = L.map("map").setView([22.7196, 75.8577], 12); // Centered on Indore
+
+            L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+                attribution: "© OpenStreetMap contributors",
+            }).addTo(map);
+
+            // If not logged in, periodically fetch and show all active drivers
+            const token = localStorage.getItem("driverToken");
+            if (!token) {
+                function fetchAndShowActiveDrivers() {
+                    fetch(API_BASE_URL + "/public/active-drivers")
+                        .then(res => res.json())
+                        .then(data => {
+                            if (data && data.drivers && Array.isArray(data.drivers)) {
+                                showActiveDriversOnMap(data.drivers);
+                            }
+                        })
+                        .catch(err => {
+                            console.error("Failed to fetch active drivers:", err);
+                        });
+                }
+                fetchAndShowActiveDrivers(); // Initial fetch
+                window.activeDriversInterval = setInterval(fetchAndShowActiveDrivers, 10000); // Update every 10s
+            } else {
+                // If logged in, clear interval if any
+                if (window.activeDriversInterval) {
+                    clearInterval(window.activeDriversInterval);
+                }
+            }
+
+            // Request user location when map loads
+            requestUserLocation();
+
+            // Add route overlays (all routes with light transparency)
+            addRouteOverlays();
+
+            // Add sample bus markers
+            addSampleBusMarkers();
+
+            mapLoaded = true;
+            loadMapBtn.innerHTML = "✅ Map Loaded";
+            loadMapBtn.disabled = true;
+
+            // Add city boundary overlay for Indore
+
+        }
+        // Show active drivers (public) on map with bus icon
+        function showActiveDriversOnMap(drivers) {
+            if (!mapLoaded || !map) return;
+            // Remove previous markers if any
+            if (window.publicBusMarkers) {
+                window.publicBusMarkers.forEach(marker => marker.remove());
+            }
+            window.publicBusMarkers = [];
+            drivers.forEach(driver => {
+                if (driver.currentLocation && driver.currentLocation.latitude && driver.currentLocation.longitude) {
+                    const marker = L.marker([
+                        driver.currentLocation.latitude,
+                        driver.currentLocation.longitude
+                    ], {
+                        icon: L.icon({
+                            iconUrl: "https://cdn-icons-png.flaticon.com/512/61/61231.png", // bus icon
+                            iconSize: [32, 32],
+                            iconAnchor: [16, 32],
+                            popupAnchor: [0, -32]
+                        })
+                    }).addTo(map);
+                    marker.bindPopup(`<div class='custom-popup'><h4>${driver.name || "Bus Driver"}</h4><p>Route: ${driver.route || "N/A"}</p><p>Vehicle: ${driver.vehicleNumber || "N/A"}</p></div>`);
+                    window.publicBusMarkers.push(marker);
+                }
+            });
+        }
+
+        // Add Indore city boundary
+        function addIndoreCityBoundary() {
+            // Approximate Indore city boundary coordinates
+            const indoreBoundary = [
+                [22.65, 75.78], // Southwest
+                [22.65, 75.95], // Southeast
+                [22.82, 75.95], // Northeast
+                [22.82, 75.78], // Northwest
+                [22.65, 75.78]  // Close the polygon
+            ];
+
+            L.polygon(indoreBoundary, {
+                color: "rgba(255, 255, 255, 0.1)",
+                fillColor: "rgba(0, 0, 0, 0.05)",
+                weight: 2,
+                opacity: 0.5,
+                fillOpacity: 0.1
+            }).addTo(map).bindPopup("Indore City Boundary");
+        }
+
+        // Clear map layers
+        function clearMap() {
+            if (currentRouteLayer) {
+                map.removeLayer(currentRouteLayer);
+                currentRouteLayer = null;
+            }
+
+            busMarkers.forEach((marker) => {
+                map.removeLayer(marker);
+            });
+            busMarkers = [];
+        }
+
+        // Add route overlays to map
+        function addRouteOverlays() {
+            Object.keys(routes).forEach((routeId) => {
+                const route = routes[routeId];
+
+                // Create route line with road-like appearance
+                const routeLayer = L.polyline(route.coordinates, {
+                    color: route.color || "#FFD700",
+                    weight: route.weight || 6,
+                    opacity: route.opacity || 0.9,
+                    lineCap: 'round',
+                    lineJoin: 'round'
+                }).addTo(map);
+
+                // Add route code markers along the route
+                addRouteCodeMarkers(route);
+
+                routeLayer.bindPopup(`
+                <div style="text-align: center; padding: 0.5rem; min-width: 200px;">
+                <h4 style="margin: 0 0 0.5rem 0; color: #333;">${route.name}</h4>
+                <p style="margin: 0.25rem 0;"><strong>Code:</strong> ${route.code}</p>
+                <p style="margin: 0.25rem 0;"><strong>Buses:</strong> ${route.buses ? route.buses.length : 0} active</p>
+                <button onclick="selectRouteById('${routeId}')" 
+                        style="background: #FFD700; color: #000; border: none; padding: 0.5rem 1rem; 
+                               border-radius: 5px; cursor: pointer; margin-top: 0.5rem; font-weight: bold;">
+                    🚌 View Route
+                </button>
+            </div>
+        `);
+            });
+        }
+
+        function addRouteCodeMarkers(route) {
+            if (!route.coordinates || route.coordinates.length < 2) return;
+
+            // Add marker at start
+            L.marker(route.coordinates[0], {
+                icon: L.divIcon({
+                    html: `<div style="background: ${route.color}; color: #000; padding: 4px 8px; 
+                    border-radius: 12px; font-weight: bold; border: 2px solid #000;
+                    box-shadow: 0 2px 8px rgba(0,0,0,0.5);">${route.code}</div>`,
+                    className: "route-code-marker",
+                    iconSize: [50, 25],
+                    iconAnchor: [25, 12],
+                })
+            }).addTo(map).bindPopup(`<strong>Start:</strong> ${route.name}`);
+
+            // Add marker at middle point
+            const midIndex = Math.floor(route.coordinates.length / 2);
+            L.marker(route.coordinates[midIndex], {
+                icon: L.divIcon({
+                    html: `<div style="background: ${route.color}; color: #000; padding: 4px 8px; 
+                    border-radius: 12px; font-weight: bold; border: 2px solid #000;
+                    box-shadow: 0 2px 8px rgba(0,0,0,0.5);">${route.code}</div>`,
+                    className: "route-code-marker",
+                    iconSize: [50, 25],
+                    iconAnchor: [25, 12],
+                })
+            }).addTo(map).bindPopup(`<strong>Mid Point:</strong> ${route.name}`);
+
+            // Add marker at end
+            L.marker(route.coordinates[route.coordinates.length - 1], {
+                icon: L.divIcon({
+                    html: `<div style="background: ${route.color}; color: #000; padding: 4px 8px; 
+                    border-radius: 12px; font-weight: bold; border: 2px solid #000;
+                    box-shadow: 0 2px 8px rgba(0,0,0,0.5);">${route.code}</div>`,
+                    className: "route-code-marker",
+                    iconSize: [50, 25],
+                    iconAnchor: [25, 12],
+                })
+            }).addTo(map).bindPopup(`<strong>End:</strong> ${route.name}`);
+        }
+        3.
+
+        // Improved location request with mobile optimization
+        function requestUserLocation() {
+            if (!navigator.geolocation) {
+                showLocationError("📍 Geolocation not supported by this browser. Map centered on Jabalpur.");
+                return;
+            }
+
+            // For mobile devices, use a more direct approach
+            if (/Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)) {
+                requestLocationAggressively();
+            } else {
+                // Desktop approach can be more subtle
+                getCurrentLocationWithRetry();
+            }
+        }
+
+        // Show location success message
+        function showLocationSuccessMessage() {
+            const message = document.createElement('div');
+            message.style.cssText = `
+                position: fixed;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                background: #00ff88;
+                color: white;
+                padding: 1rem 2rem;
+                border-radius: 10px;
+                font-weight: bold;
+                z-index: 2000;
+                box-shadow: 0 4px 20px rgba(0, 255, 136, 0.3);
+                `;
+            message.innerHTML = '✅ Location Enabled Successfully!';
+            document.body.appendChild(message);
+
+            setTimeout(() => {
+                message.remove();
+            }, 3000);
+        }
+
+        // Show location failed message with retry option
+        function showLocationFailedMessage() {
+            const message = document.createElement('div');
+            message.style.cssText = `
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: var(--glass-bg);
+        backdrop-filter: blur(20px);
+        border: 1px solid var(--glass-border);
+        color: var(--text-dark);
+        padding: 1.5rem;
+        border-radius: 15px;
+        z-index: 2000;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        text-align: center;
+        max-width: 300px;
+    `;
+            message.innerHTML = `
+        <div style="font-size: 2rem; margin-bottom: 0.5rem;">📍</div>
+        <div style="font-weight: bold; margin-bottom: 0.5rem;">Location Access Needed</div>
+        <div style="font-size: 0.9rem; color: var(--text-light); margin-bottom: 1rem;">
+            Please allow location access to find nearby buses
+        </div>
+        <button onclick="this.parentElement.remove(); requestLocationAggressively();" style="background: var(--primary-color); color: white; border: none; padding: 0.5rem 1rem; border-radius: 8px; cursor: pointer; margin: 0 0.25rem;">
+            Try Again
+        </button>
+        <button onclick="this.parentElement.remove();" style="background: var(--border-color); color: var(--text-dark); border: none; padding: 0.5rem 1rem; border-radius: 8px; cursor: pointer; margin: 0 0.25rem;">
+            Skip
+        </button>
+    `;
+            document.body.appendChild(message);
+        }
+
+        // Aggressive location request with multiple retries for mobile
+        function requestLocationAggressively() {
+            let attempts = 0;
+            const maxAttempts = 3;
+
+            function tryGetLocation() {
+                attempts++;
+                console.log(`Location attempt ${attempts}/${maxAttempts}`);
+
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        console.log("Location granted successfully!");
+                        userLocation = [position.coords.latitude, position.coords.longitude];
+
+                        // Load map if not loaded
+                        if (!mapLoaded) {
+                            loadMap();
+                            setTimeout(() => {
+                                showUserLocationOnMap();
+                                map.setView(userLocation, 15);
+                            }, 1000);
+                        } else {
+                            showUserLocationOnMap();
+                            map.setView(userLocation, 15);
+                        }
+
+                        // Show success message
+                        showLocationSuccessMessage();
+                    },
+                    (error) => {
+                        console.log(`Location attempt ${attempts} failed:`, error.message);
+
+                        if (attempts < maxAttempts) {
+                            // Wait and try again with different settings
+                            setTimeout(() => {
+                                tryGetLocation();
+                            }, 1000);
+                        } else {
+                            console.log("All location attempts failed");
+                            showLocationFailedMessage();
+                        }
+                    },
+                    {
+                        enableHighAccuracy: attempts <= 2,
+                        timeout: 10000 + attempts * 5000,
+                        maximumAge: attempts > 3 ? 300000 : 0,
+                    }
+                );
+            }
+            // Start the first attempt
+            tryGetLocation();
+        }
+
+        // Check current location permission status
+        async function checkLocationPermission() {
+            if ("permissions" in navigator) {
+                try {
+                    const result = await navigator.permissions.query({
+                        name: "geolocation",
+                    });
+                    console.log("Location permission status:", result.state);
+                    return result.state;
+                } catch (error) {
+                    console.log("Permission API not supported, checking manually");
+                }
+            }
+
+            // Fallback: Try to get location to check permission
+            return new Promise((resolve) => {
+                navigator.geolocation.getCurrentPosition(
+                    () => resolve("granted"),
+                    (error) => {
+                        if (error.code === error.PERMISSION_DENIED) {
+                            resolve("denied");
+                        } else {
+                            resolve("prompt");
+                        }
+                    },
+                    { timeout: 1000, maximumAge: Infinity }
+                );
+            });
+        }
+
+        // Simple location permission request
+        function showLocationPermissionDialog() {
+            // Directly request location without complex UI
+            requestLocationAggressively();
+        }
+
+        // Get browser name for optimization
+        function getBrowserName() {
+            const userAgent = navigator.userAgent;
+
+            if (
+                userAgent.includes("Chrome") &&
+                !userAgent.includes("Edg") &&
+                !userAgent.includes("OPR")
+            ) {
+                return "Chrome";
+            } else if (userAgent.includes("Firefox")) {
+                return "Firefox";
+            } else if (userAgent.includes("Edg")) {
+                return "Edge";
+            } else if (
+                userAgent.includes("Safari") &&
+                !userAgent.includes("Chrome")
+            ) {
+                return "Safari";
+            } else if (userAgent.includes("OPR") || userAgent.includes("Opera")) {
+                return "Opera";
+            } else {
+                return "Browser";
+            }
+        }
+
+        // Get current location with retry mechanism
+        function getCurrentLocationWithRetry() {
+            // Show loading message
+            const loadingPopup = L.popup()
+                .setLatLng([23.1815, 79.9864])
+                .setContent("📍 Getting your location...")
+                .openOn(map);
+
+            // Browser-optimized geolocation options
+            const browserName = getBrowserName();
+            let geoOptions = {
+                enableHighAccuracy: true,
+                timeout: 15000,
+                maximumAge: 30000,
+            };
+
+            // Optimize for specific browsers
+            switch (browserName) {
+                case "Chrome":
+                    geoOptions.timeout = 20000;
+                    break;
+                case "Firefox":
+                    geoOptions.enableHighAccuracy = false;
+                    geoOptions.timeout = 25000;
+                    break;
+                case "Edge":
+                    geoOptions.timeout = 18000;
+                    break;
+            }
+
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    handleLocationSuccess(position, loadingPopup);
+                },
+                (error) => {
+                    console.log("Location request failed, trying fallback...", error);
+
+                    // Fallback with lower accuracy
+                    const fallbackOptions = {
+                        enableHighAccuracy: false,
+                        timeout: 30000,
+                        maximumAge: 300000,
+                    };
+
+                    navigator.geolocation.getCurrentPosition(
+                        (position) => {
+                            handleLocationSuccess(position, loadingPopup, true);
+                        },
+                        (fallbackError) => {
+                            handleLocationError(fallbackError, loadingPopup);
+                        },
+                        fallbackOptions
+                    );
+                },
+                geoOptions
+            );
+        }
+
+        // Handle successful location retrieval
+        function handleLocationSuccess(
+            position,
+            loadingPopup,
+            isFallback = false
+        ) {
+            if (loadingPopup && map.hasLayer(loadingPopup)) {
+                map.closePopup(loadingPopup);
+            }
+
+            userLocation = [position.coords.latitude, position.coords.longitude];
+            showUserLocationOnMap();
+
+            // Center map on user location with appropriate zoom
+            const accuracy = position.coords.accuracy;
+            let zoomLevel = 15;
+
+            if (accuracy > 1000) zoomLevel = 12;
+            else if (accuracy > 500) zoomLevel = 13;
+            else if (accuracy > 100) zoomLevel = 14;
+
+            map.setView(userLocation, zoomLevel);
+
+            // Show success message with accuracy info
+            const accuracyText = accuracy ? ` (±${Math.round(accuracy)}m)` : "";
+            const fallbackText = isFallback ? " (Low accuracy mode)" : "";
+
+            const successPopup = L.popup()
+                .setLatLng(userLocation)
+                .setContent(`✅ Location found!${accuracyText}${fallbackText}`)
+                .openOn(map);
+
+            setTimeout(() => {
+                if (map.hasLayer(successPopup)) {
+                    map.closePopup(successPopup);
+                }
+            }, 4000);
+
+            // Store location for offline use
+            localStorage.setItem(
+                "lastKnownLocation",
+                JSON.stringify({
+                    coords: userLocation,
+                    timestamp: Date.now(),
+                    accuracy: accuracy,
+                })
+            );
+        }
+
+        // Handle location errors
+        function handleLocationError(error, loadingPopup) {
+            if (loadingPopup && map.hasLayer(loadingPopup)) {
+                map.closePopup(loadingPopup);
+            }
+
+            console.log("Location error:", error);
+
+            let errorMessage = "📍 ";
+            let suggestion = "";
+
+            switch (error.code) {
+                case error.PERMISSION_DENIED:
+                    errorMessage += "Location access denied.";
+                    suggestion =
+                        "Please enable location in your browser/app settings and refresh the page.";
+                    break;
+                case error.POSITION_UNAVAILABLE:
+                    errorMessage += "Location unavailable.";
+                    suggestion =
+                        "Please check your GPS/internet connection and try again.";
+                    break;
+                case error.TIMEOUT:
+                    errorMessage += "Location request timed out.";
+                    suggestion = "Trying to use last known location...";
+                    tryLastKnownLocation();
+                    break;
+                default:
+                    errorMessage += "Location error occurred.";
+                    suggestion = "Using default location (Jabalpur).";
+            }
+
+            showLocationError(errorMessage + " " + suggestion);
+        }
+
+        // Show location error message
+        function showLocationError(message) {
+            const errorPopup = L.popup()
+                .setLatLng([23.1815, 79.9864])
+                .setContent(message)
+                .openOn(map);
+
+            setTimeout(() => {
+                if (map.hasLayer(errorPopup)) {
+                    map.closePopup(errorPopup);
+                }
+            }, 6000);
+        }
+
+        // Start continuous location watching for Android
+        function startLocationWatch() {
+            if (window.locationWatchId) {
+                navigator.geolocation.clearWatch(window.locationWatchId);
+            }
+
+            window.locationWatchId = navigator.geolocation.watchPosition(
+                (position) => {
+                    if (!userLocation) {
+                        handleLocationSuccess(position, null);
+                    } else {
+                        // Update location if significantly different
+                        const newLocation = [
+                            position.coords.latitude,
+                            position.coords.longitude,
+                        ];
+                        const distance = calculateDistance(userLocation, newLocation);
+
+                        if (distance > 100) {
+                            // Update if moved more than 100 meters
+                            userLocation = newLocation;
+                            updateUserLocationOnMap();
+                        }
+                    }
+                },
+                (error) => {
+                    console.log("Watch position error:", error);
+                },
+                {
+                    enableHighAccuracy: false,
+                    timeout: 30000,
+                    maximumAge: 120000,
+                }
+            );
+        }
+
+        // Try to use last known location
+        function tryLastKnownLocation() {
+            const lastLocation = localStorage.getItem("lastKnownLocation");
+            if (lastLocation) {
+                try {
+                    const locationData = JSON.parse(lastLocation);
+                    const age = Date.now() - locationData.timestamp;
+
+                    // Use if less than 1 hour old
+                    if (age < 3600000) {
+                        userLocation = locationData.coords;
+                        showUserLocationOnMap();
+                        map.setView(userLocation, 13);
+
+                        const popup = L.popup()
+                            .setLatLng(userLocation)
+                            .setContent("📍 Using last known location (cached)")
+                            .openOn(map);
+
+                        setTimeout(() => {
+                            if (map.hasLayer(popup)) {
+                                map.closePopup(popup);
+                            }
+                        }, 3000);
+
+                        return true;
+                    }
+                } catch (e) {
+                    console.log("Error parsing last known location:", e);
+                }
+            }
+            return false;
+        }
+
+        // Calculate distance between two coordinates
+        function calculateDistance(coord1, coord2) {
+            const R = 6371e3; // Earth's radius in meters
+            const φ1 = (coord1[0] * Math.PI) / 180;
+            const φ2 = (coord2[0] * Math.PI) / 180;
+            const Δφ = ((coord2[0] - coord1[0]) * Math.PI) / 180;
+            const Δλ = ((coord2[1] - coord1[1]) * Math.PI) / 180;
+
+            const a =
+                Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
+                Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+            return R * c;
+        }
+
+        // Update user location marker
+        function updateUserLocationOnMap() {
+            if (
+                window.userLocationMarker &&
+                map.hasLayer(window.userLocationMarker)
+            ) {
+                window.userLocationMarker.setLatLng(userLocation);
+            } else {
+                showUserLocationOnMap();
+            }
+        }
+
+        // Show user location on map
+        function showUserLocationOnMap() {
+            if (!userLocation || !map) return;
+
+            // Remove existing user location marker
+            if (window.userLocationMarker) {
+                map.removeLayer(window.userLocationMarker);
+            }
+
+            // Add user location marker
+            window.userLocationMarker = L.marker(userLocation, {
+                icon: L.divIcon({
+                    html: '<div style="width: 16px; height: 16px; background: #3498db; border: 3px solid white; border-radius: 50%; box-shadow: 0 2px 8px rgba(0,0,0,0.3); animation: pulse 2s infinite;"></div>',
+                    className: "user-location-marker",
+                    iconSize: [22, 22],
+                    iconAnchor: [11, 11],
+                }),
+            }).addTo(map);
+
+            window.userLocationMarker.bindPopup("📍 Your Current Location");
+
+            // Add CSS animation for pulse effect
+            if (!document.getElementById("pulseAnimation")) {
+                const style = document.createElement("style");
+                style.id = "pulseAnimation";
+                style.textContent = `
+                    @keyframes pulse {
+                        0% { transform: scale(1); opacity: 1; }
+                        50% { transform: scale(1.2); opacity: 0.7; }
+                        100% { transform: scale(1); opacity: 1; }
+                    }
+                `;
+                document.head.appendChild(style);
+            }
+        }
+
+        function addSampleBusMarkers() {
+            showActiveDrivers(["bus"]);
+        }
+
+        // Update driver markers on map
+        function updateDriverMarkersOnMap() {
+            if (!mapLoaded || !map) return;
+
+            // Clear existing markers
+            busMarkers.forEach((marker) => {
+                map.removeLayer(marker);
+            });
+            busMarkers = [];
+
+            // Add updated markers
+            showActiveDrivers(["bus", "auto", "other"]);
+        }
+
+        // Update specific driver location
+        function updateDriverLocation(driverId, location) {
+            // Find and update driver in activeDrivers array
+            const driverIndex = activeDrivers.findIndex(
+                (driver) => driver.id === driverId
+            );
+            if (driverIndex !== -1) {
+                activeDrivers[driverIndex].position = [
+                    location.latitude,
+                    location.longitude,
+                ];
+                activeDrivers[driverIndex].lastUpdated = new Date().toISOString();
+
+                // Update marker on map if loaded
+                if (mapLoaded) {
+                    updateDriverMarkersOnMap();
+                }
+
+                console.log(`Updated location for driver ${driverId}`);
+            }
+        }
+
+        // Update driver status
+        function updateDriverStatus(driverId, status) {
+            const driverIndex = activeDrivers.findIndex(
+                (driver) => driver.id === driverId
+            );
+            if (driverIndex !== -1) {
+                activeDrivers[driverIndex].status = status;
+
+                // Update marker on map if loaded
+                if (mapLoaded) {
+                    updateDriverMarkersOnMap();
+                }
+
+                console.log(`Updated status for driver ${driverId}: ${status}`);
+            }
+        }
+
+        // Add new driver to map
+        function addNewDriverToMap(driver) {
+            // Add to activeDrivers array if not already present
+            const existingIndex = activeDrivers.findIndex(
+                (d) => d.id === driver.id
+            );
+            if (existingIndex === -1) {
+                activeDrivers.push(driver);
+
+                // Update map if loaded
+                if (mapLoaded) {
+                    updateDriverMarkersOnMap();
+                }
+
+                console.log(`New driver online: ${driver.name}`);
+            }
+        }
+
+        // Remove driver from map
+        function removeDriverFromMap(driverId) {
+            // Remove from activeDrivers array
+            const driverIndex = activeDrivers.findIndex(
+                (driver) => driver.id === driverId
+            );
+            if (driverIndex !== -1) {
+                const driverName = activeDrivers[driverIndex].name;
+                activeDrivers.splice(driverIndex, 1);
+
+                // Update map if loaded
+                if (mapLoaded) {
+                    updateDriverMarkersOnMap();
+                }
+
+                console.log(`Driver offline: ${driverName}`);
+            }
+        }
+
+        // Show active drivers on map
+        function showActiveDrivers(driverTypes = ["bus", "auto", "other"]) {
+            const filteredDrivers = activeDrivers.filter((driver) =>
+                driverTypes.includes(driver.driverType)
+            );
+
+            filteredDrivers.forEach((driver) => {
+                let icon = "🚌";
+                let bgColor = "#00d4ff";
+                let typeIcon = "";
+
+                switch (driver.driverType) {
+                    case "auto":
+                        icon = "🛺";
+                        bgColor = "#ff6b6b";
+                        typeIcon = "Auto";
+                        break;
+                    case "other":
+                        icon = "🚗";
+                        bgColor = "#8a2be2";
+                        typeIcon = driver.customDriverType || "Other";
+                        break;
+                    default:
+                        typeIcon = "Bus";
+                }
+
+                const marker = L.marker(driver.position, {
+                    icon: L.divIcon({
+                        html: `
+                            <div style="position: relative;">
+                                <div style="background: ${bgColor}; color: white; padding: 4px 8px; border-radius: 12px; font-size: 12px; font-weight: bold; box-shadow: 0 2px 8px rgba(0,0,0,0.3);">${icon} ${driver.id}</div>
+                                <div style="position: absolute; top: -8px; right: -5px; background: rgba(0,0,0,0.8); color: white; padding: 2px 4px; border-radius: 6px; font-size: 8px; white-space: nowrap;">${typeIcon}</div>
+                            </div>
+                        `,
+                        className: "custom-driver-marker",
+                        iconSize: [100, 40],
+                        iconAnchor: [50, 20],
+                    }),
+                }).addTo(map);
+
+                marker.bindPopup(createDriverPopup(driver));
+                busMarkers.push(marker);
+            });
+        }
+
+        // Create driver popup content
+        function createDriverPopup(driver) {
+            const driverTypeDisplay =
+                driver.driverType === "other"
+                    ? driver.customDriverType
+                    : driver.driverType.charAt(0).toUpperCase() +
+                    driver.driverType.slice(1);
+
+            return `
+                <div style="text-align: center; padding: 1rem; min-width: 250px;">
+                    <h3 style="margin: 0 0 0.5rem 0; color: var(--primary-color);">${driver.name
+                }</h3>
+                    <div style="text-align: left; margin: 0.5rem 0;">
+                        <p><strong>Type:</strong> ${driverTypeDisplay} Driver</p>
+                        <p><strong>Vehicle:</strong> ${driver.vehicleNumber}</p>
+                        <p><strong>Color:</strong> ${driver.vehicleColor}</p>
+                        <p><strong>ID Mark:</strong> ${driver.vehicleIdentification
+                }</p>
+                        ${driver.route
+                    ? `<p><strong>Route:</strong> ${driver.route} (${driver.routeCode})</p>`
+                    : ""
+                }
+                        <p><strong>Phone:</strong> ${driver.phone}</p>
+                        <p><strong>WhatsApp:</strong> ${driver.whatsapp}</p>
+                        <p><strong>Rating:</strong> ⭐ ${driver.rating}/5 (${driver.trips
+                } trips)</p>
+                        <p><strong>Status:</strong> <span style="color: #00ff88;">●</span> ${driver.status
+                }</p>
+                    </div>
+                    <div style="margin-top: 1rem;">
+                        <button onclick="callDriver('${driver.phone
+                }')" style="background: #00ff88; color: white; border: none; padding: 0.5rem 1rem; border-radius: 5px; cursor: pointer; margin: 0 0.25rem;">📞 Call</button>
+                        <button onclick="whatsappDriver('${driver.whatsapp
+                }')" style="background: #25D366; color: white; border: none; padding: 0.5rem 1rem; border-radius: 5px; cursor: pointer; margin: 0 0.25rem;">💬 WhatsApp</button>
+                    </div>
+                </div>
+            `;
+        }
+
+        // Menu Actions
+        function handleMenuAction(event) {
+            const action = event.currentTarget.dataset.action;
+
+            switch (action) {
+                case "faq":
+                    showFAQ();
+                    break;
+                case "customer-service":
+                    showCustomerService();
+                    break;
+                case "about":
+                    showAbout();
+                    break;
+                case "notifications":
+                    showNotificationSettings();
+                    break;
+                default:
+                    alert(`${action} feature coming soon!`);
+            }
+
+            closeSidebar();
+        }
+
+        function showFAQ() {
+            showModal("faqModal");
+        }
+
+        function showCustomerService() {
+            showModal("customerServiceModal");
+        }
+
+        function showAbout() {
+            showModal("aboutModal");
+        }
+
+        // Utility Functions
+        function populateCityOptions() {
+            const cities = [
+                "Jabalpur",
+                "Rewa",
+                "Maihar",
+                "Indore",
+                "Ujjain",
+                "Bhopal",
+                "Gwalior",
+                "Sagar",
+            ];
+            // Add datalist for autocomplete (optional enhancement)
+        }
+
+        function trackBus(busId) {
+            alert(`Tracking Bus ${busId}
+
+Current Status: On Route
+Next Stop: Central Station
+Estimated Arrival: 15 minutes
+Delay: None
+
+Real-time updates will be sent to your registered mobile number.`);
+        }
+
+        // Call driver function
+        function callDriver(phoneNumber) {
+            window.open(`tel:${phoneNumber}`, "_self");
+        }
+
+        // WhatsApp driver function
+        function whatsappDriver(whatsappNumber) {
+            const message = encodeURIComponent(
+                "Hi! I found you on BusMitra. Are you available for a ride?"
+            );
+            window.open(
+                `https://wa.me/${whatsappNumber.replace(
+                    /[^0-9]/g,
+                    ""
+                )}?text=${message}`,
+                "_blank"
+            );
+        }
+
+        // Cleanup on page unload
+        window.addEventListener("beforeunload", function () {
+            // Stop location tracking
+            if (locationUpdateInterval) {
+                clearInterval(locationUpdateInterval);
+            }
+
+            // Stop real-time updates
+            if (realTimeUpdateInterval) {
+                clearInterval(realTimeUpdateInterval);
+            }
+
+            // Close WebSocket connection
+            if (websocketConnection) {
+                websocketConnection.close();
+            }
+        });
+
+        /*
+          BACKEND SERVER REQUIREMENTS:
+  
+          This frontend expects a Node.js/Express backend server with the following endpoints:
+  
+          1. POST /api/drivers/signup
+             - Accepts FormData with driver registration details
+             - Stores driver data in MongoDB
+             - Returns: { success: true, driverId: "DR001", message: "Registration successful" }
+  
+          2. POST /api/drivers/login
+             - Accepts: { phone: string, password: string }
+             - Returns: { success: true, token: "jwt_token", driver: {...driverData} }
+  
+          3. POST /api/drivers/logout
+             - Accepts: { driverId: string }
+             - Updates driver status to offline
+             - Returns: { success: true }
+  
+          4. POST /api/drivers/location
+             - Accepts: { driverId: string, latitude: number, longitude: number, timestamp: string, status: string }
+             - Updates driver location in real-time
+             - Broadcasts location update via WebSocket
+             - Returns: { success: true }
+  
+          5. GET /api/drivers/active
+             - Returns: { success: true, drivers: [...activeDriversArray] }
+             - Includes all online drivers with their current locations
+  
+          6. WebSocket /ws
+             - Real-time communication for location updates
+             - Message types: 'driver_location_update', 'driver_status_change', 'new_driver_online', 'driver_offline'
+  
+          MongoDB Schema:
+  
+          Drivers Collection:
+          {
+            _id: ObjectId,
+            driverId: String (unique),
+            name: String,
+            phone: String (unique),
+            whatsapp: String,
+            password: String (hashed),
+            driverType: String, // 'bus', 'auto', 'other'
+            customDriverType: String,
+            vehicleNumber: String,
+            vehicleColor: String,
+            vehicleIdentification: String,
+            route: String,
+            routeCode: String,
+            stops: [String],
+            photo: String, // file path or base64
+            status: String, // 'Online', 'Offline', 'Pending'
+            isApproved: Boolean,
+            rating: Number,
+            trips: Number,
+            createdAt: Date,
+            updatedAt: Date
+          }
+  
+          Locations Collection:
+          {
+            _id: ObjectId,
+            driverId: String,
+            latitude: Number,
+            longitude: Number,
+            accuracy: Number,
+            timestamp: Date,
+            status: String
+          }
+  
+          Routes Collection:
+          {
+            _id: ObjectId,
+            routeId: String,
+            name: String,
+            code: String,
+            color: String,
+            coordinates: [[Number, Number]],
+            isCustom: Boolean,
+            distance: String,
+            duration: String,
+            createdBy: String, // driverId
+            createdAt: Date
+          }
+  
+          Required npm packages:
+          - express
+          - mongoose
+          - bcryptjs
+          - jsonwebtoken
+          - multer (for file uploads)
+          - ws (WebSocket)
+          - cors
+          - helmet
+          - express-rate-limit
+  
+          Environment Variables:
+          - MONGODB_URI
+          - JWT_SECRET
+          - PORT
+          - UPLOAD_PATH
+  
+          Deploy using ngrok:
+          1. Start your Node.js server: node server.js
+          2. In another terminal: ngrok http 3000 --scheme=https
+          3. Update API_BASE_URL in this frontend with your ngrok URL
+          4. The ngrok URL will be accessible globally over HTTPS
+          */
+
+        // Backend Integration Helper Functions
+        async function makeAuthenticatedRequest(url, options = {}) {
+            const token = localStorage.getItem("driverToken");
+
+            const defaultOptions = {
+                headers: {
+                    "Content-Type": "application/json",
+                    ...(token && { Authorization: `Bearer ${token}` }),
+                },
+            };
+
+            return fetch(url, { ...defaultOptions, ...options });
+        }
+
+        // Error Handler for API calls
+        function handleAPIError(error) {
+            console.error("API Error:", error);
+
+            if (error.status === 401) {
+                // Unauthorized - clear stored data and redirect to login
+                localStorage.removeItem("driverToken");
+                localStorage.removeItem("driverData");
+                alert("Session expired. Please login again.");
+                location.reload();
+            } else {
+                alert("An error occurred. Please try again.");
+            }
+        }
+    </script>
+    <script>
+        (function () {
+            function c() {
+                var b = a.contentDocument || a.contentWindow.document;
+                if (b) {
+                    var d = b.createElement("script");
+                    d.innerHTML =
+                        "window.__CF$cv$params={r:'97ff46901763de58',t:'MTc1ODAxNDI5OC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";
+                    b.getElementsByTagName("head")[0].appendChild(d);
+                }
+            }
+            if (document.body) {
+                var a = document.createElement("iframe");
+                a.height = 1;
+                a.width = 1;
+                a.style.position = "absolute";
+                a.style.top = 0;
+                a.style.left = 0;
+                a.style.border = "none";
+                a.style.visibility = "hidden";
+                document.body.appendChild(a);
+                if ("loading" !== document.readyState) c();
+                else if (window.addEventListener)
+                    document.addEventListener("DOMContentLoaded", c);
+                else {
+                    var e = document.onreadystatechange || function () { };
+                    document.onreadystatechange = function (b) {
+                        e(b);
+                        "loading" !== document.readyState &&
+                            ((document.onreadystatechange = e), c());
+                    };
+                }
+            }
+        })();
+    </script>
+</body>
+
+</html>
