@@ -1,0 +1,680 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>BusMitra - Map Design Studio</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Orbitron:wght@500&display=swap" rel="stylesheet">
+
+    <style>
+        /* BASE & LAYOUT */
+        body { margin: 0; font-family: 'Inter', sans-serif; display: flex; height: 100vh; overflow: hidden; background: #f4f4f9; }
+
+        .sidebar {
+            width: 380px; background: #fff; border-right: 1px solid #e0e0e0;
+            display: flex; flex-direction: column; z-index: 1000; box-shadow: 4px 0 15px rgba(0,0,0,0.05);
+        }
+
+        /* HEADER */
+        .header {
+            padding: 15px 20px; background: #2c3e50; color: white;
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .header h2 { margin: 0; font-size: 1.1rem; display: flex; align-items: center; gap: 8px; }
+
+        /* SCROLLABLE CONTENT */
+        .controls { padding: 0; overflow-y: auto; flex: 1; }
+        .control-group { padding: 20px; border-bottom: 1px solid #eee; }
+        .control-group h3 { margin: 0 0 15px 0; font-size: 0.85rem; text-transform: uppercase; color: #888; letter-spacing: 1px; }
+
+        /* TABS */
+        .tabs { display: flex; background: #eee; padding: 5px; margin: 20px; border-radius: 8px; }
+        .tab {
+            flex: 1; padding: 8px; text-align: center; cursor: pointer;
+            font-weight: 600; font-size: 0.9rem; color: #666; border-radius: 6px; transition: 0.2s;
+        }
+        .tab.active { background: white; color: #3498db; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+
+        /* FORMS & INPUTS */
+        .form-section { display: none; }
+        .form-section.active { display: block; }
+
+        label { display: block; margin-top: 12px; margin-bottom: 4px; font-weight: 600; font-size: 0.85rem; color: #444; }
+        input[type="text"], textarea, select {
+            width: 100%; padding: 8px 10px; border: 1px solid #ddd; border-radius: 6px;
+            font-family: inherit; font-size: 0.9rem; box-sizing: border-box; transition: 0.2s;
+        }
+        input:focus, textarea:focus { border-color: #3498db; outline: none; }
+
+        /* DYNAMIC SUBHEADINGS */
+        .sub-input-group { display: flex; gap: 5px; margin-bottom: 5px; }
+        .btn-small {
+            padding: 5px 10px; font-size: 0.8rem; background: #f1f1f1; color: #666;
+            border: 1px solid #ddd; border-radius: 4px; cursor: pointer; transition: 0.2s;
+        }
+        .btn-small:hover { background: #e2e2e2; color: #333; }
+        .btn-small.red:hover { background: #fee; color: #e74c3c; border-color: #e74c3c; }
+
+        /* STYLE GRID SYSTEM */
+        .style-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .style-item { display: flex; flex-direction: column; }
+
+        input[type="color"] { width: 100%; height: 36px; border: none; padding: 0; background: none; cursor: pointer; }
+        input[type="range"] { width: 100%; cursor: pointer; accent-color: #3498db; }
+
+        /* CHECKBOX BUTTONS */
+        .checkbox-group { display: flex; gap: 10px; margin-top: 5px; }
+        .check-btn {
+            flex: 1; padding: 8px; background: #f8f9fa; border: 1px solid #ddd;
+            border-radius: 4px; text-align: center; cursor: pointer; font-size: 0.85rem;
+        }
+        .check-btn.active { background: #e3f2fd; border-color: #3498db; color: #3498db; font-weight: bold; }
+
+        /* SYMBOL GRID */
+        .icon-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin-top: 10px; }
+        .icon-opt {
+            font-size: 1.4rem; text-align: center; padding: 8px; border-radius: 6px;
+            border: 1px solid #eee; cursor: pointer; transition: 0.2s; background: white;
+        }
+        .icon-opt:hover { transform: scale(1.1); border-color: #3498db; }
+        .icon-opt.selected { background: #3498db; color: white; border-color: #3498db; }
+        .category-title { grid-column: 1 / -1; font-size: 0.75rem; color: #999; text-transform: uppercase; margin-top: 10px; }
+
+        /* PLACE BUTTON */
+        .btn-place {
+            width: 100%; padding: 12px; background: #2ecc71; color: white; border: none;
+            border-radius: 6px; font-weight: bold; margin-top: 15px; cursor: pointer;
+            display: flex; align-items: center; justify-content: center; gap: 10px;
+            box-shadow: 0 4px 6px rgba(46, 204, 113, 0.2);
+            transition: all 0.2s;
+        }
+        .btn-place:active { transform: scale(0.95); }
+        .btn-place.active-mode { background: #27ae60; ring: 2px solid #2ecc71; }
+
+        /* ACTIONS FOOTER */
+        .actions { padding: 15px 20px; border-top: 1px solid #ddd; background: white; display: flex; gap: 10px; }
+        .btn { flex: 1; padding: 12px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; transition: 0.2s; }
+        .btn-primary { background: #3498db; color: white; }
+        .btn-primary:hover { background: #2980b9; }
+
+        .btn-secondary { background: #95a5a6; color: white; }
+        .btn-secondary:hover { background: #7f8c8d; }
+
+        /* DELETE DROPDOWN */
+        .dropdown { position: relative; display: inline-block; flex: 0.6; }
+        .btn-danger { background: #e74c3c; color: white; width: 100%; }
+        .btn-danger:hover { background: #c0392b; }
+        .dropdown-content {
+            display: none; position: absolute; bottom: 100%; right: 0;
+            background-color: white; min-width: 160px; box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
+            z-index: 1000; border-radius: 6px; overflow: hidden; margin-bottom: 5px;
+        }
+        .dropdown-content button {
+            color: black; padding: 12px 16px; text-decoration: none; display: block;
+            width: 100%; border: none; background: none; text-align: left; cursor: pointer;
+        }
+        .dropdown-content button:hover { background-color: #f1f1f1; }
+        .dropdown:hover .dropdown-content { display: block; }
+
+        /* MAP AREA */
+        #map { flex: 1; background: #eef; cursor: default; } /* Default cursor */
+        #map.placing-mode { cursor: crosshair; } /* Cursor when placing */
+
+        /* NOTIFICATIONS - IMPROVED VISIBILITY */
+        .status-overlay {
+            position: absolute; top: 80px; left: 50%; transform: translateX(-50%);
+            background: #2ecc71; color: white; padding: 12px 24px; border-radius: 50px;
+            font-weight: 800; font-size: 1rem; box-shadow: 0 4px 15px rgba(0,0,0,0.3); z-index: 9999;
+            display: none; animation: popIn 0.3s ease; pointer-events: none; border: 2px solid white;
+        }
+        .status-overlay.visible { display: block; }
+
+        .selection-info {
+            position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%);
+            background: #34495e; color: white; padding: 8px 16px; border-radius: 4px;
+            font-size: 0.85rem; display: none; z-index: 2000;
+        }
+        .selection-info.visible { display: block; }
+
+        @keyframes popIn {
+            0% { transform: translateX(-50%) scale(0.8); opacity: 0; }
+            100% { transform: translateX(-50%) scale(1); opacity: 1; }
+        }
+
+        /* --- MAP ELEMENTS CSS --- */
+        .map-element-wrapper {
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            text-align: center; white-space: nowrap;
+        }
+        .map-text-sub { margin-top: 1px; }
+        .leaflet-marker-icon.editing-active {
+            outline: 2px dashed #3498db; outline-offset: 4px; z-index: 9999 !important;
+        }
+
+        /* Zoom Visibility Handling */
+        .leaflet-zoom-animated { transition: opacity 0.2s; }
+        .element-hidden { opacity: 0; pointer-events: none; }
+    </style>
+</head>
+<body>
+
+    <div class="sidebar">
+        <div class="header">
+            <h2>🎨 Design Studio <small>Pro</small></h2>
+            <div id="saveStatus" style="font-size: 0.8rem; color: #aaa;">Ready</div>
+        </div>
+
+        <div class="tabs">
+            <div class="tab active" onclick="setTool('text')">Text Label</div>
+            <div class="tab" onclick="setTool('symbol')">Icon Symbol</div>
+        </div>
+
+        <div class="controls">
+            <div class="control-group">
+                <h3>1. Content</h3>
+
+                <div id="textForm" class="form-section active">
+                    <label>Main Title</label>
+                    <input type="text" id="inpMain" placeholder="e.g. Bus Stand" oninput="updateLive()">
+
+                    <label>Subheadings</label>
+                    <div id="subheadingContainer">
+                        <div class="sub-input-group">
+                            <input type="text" class="sub-input" placeholder="Line 1" oninput="updateLive()">
+                        </div>
+                    </div>
+                    <button class="btn-small" onclick="addSubheading()" style="margin-top:5px;">+ Add Line</button>
+
+                    <button class="btn-place" id="btnPlaceText" onclick="activatePlacingMode('text')">📍 Place Text on Map</button>
+                </div>
+
+                <div id="symbolForm" class="form-section">
+                    <label>Select Icon (Click to Place)</label>
+                    <div id="dynamicSymbolGrid" class="icon-grid"></div>
+                    <input type="hidden" id="inpIcon" value="📍">
+
+                    <label>Label below Icon</label>
+                    <input type="text" id="inpSymLabel" placeholder="Optional label" oninput="updateLive()">
+                </div>
+
+                <label>Popup Info Card</label>
+                <textarea id="inpInfo" rows="2" placeholder="Details shown on click..." oninput="updateLive()"></textarea>
+            </div>
+
+            <div class="control-group">
+                <h3>2. Styling & Effects</h3>
+                <div class="style-grid">
+                    <div class="style-item"><label>Size</label><input type="range" id="styScale" min="0.5" max="3" step="0.1" value="1" oninput="updateLive()"></div>
+                    <div class="style-item"><label>Rotation</label><input type="range" id="styRotate" min="0" max="360" step="5" value="0" oninput="updateLive()"></div>
+                    <div class="style-item"><label>Color</label><input type="color" id="styColor" value="#2c3e50" oninput="updateLive()"></div>
+
+                    <div class="style-item">
+                        <label>Background</label>
+                        <div style="display:flex; gap:5px;">
+                            <input type="color" id="styBg" value="#ffffff" oninput="updateLive()">
+                            <button class="btn-small" onclick="toggleTransparent()" title="Toggle Transparent">🚫</button>
+                        </div>
+                    </div>
+
+                    <div class="style-item"><label>Opacity</label><input type="range" id="styOpacity" min="0.1" max="1" step="0.1" value="1" oninput="updateLive()"></div>
+                    <div class="style-item"><label>Radius</label><input type="range" id="styRadius" min="0" max="25" value="0" oninput="updateLive()"></div>
+                </div>
+                <label>Font Style</label>
+                <div class="checkbox-group">
+                    <div class="check-btn" id="btnBold" onclick="toggleStyle('bold')">Bold</div>
+                    <div class="check-btn" id="btnItalic" onclick="toggleStyle('italic')">Italic</div>
+                    <div class="check-btn" id="btnShadow" onclick="toggleStyle('shadow')">Shadow</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="actions">
+            <button class="btn btn-secondary" onclick="exportJSON()">⬇️ Export File</button>
+            <button class="btn btn-primary" onclick="saveToServer()">☁️ Save to Server</button>
+
+            <div class="dropdown">
+                <button class="btn btn-danger">🗑️ Delete ▼</button>
+                <div class="dropdown-content">
+                    <button onclick="deleteSelected()">Delete Selected</button>
+                    <button onclick="clearMap()" style="color:red;">Delete ALL</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="map"></div>
+
+    <div id="statusMsg" class="status-overlay">👇 CLICK ON MAP TO PLACE IT!</div>
+    <div id="selectionMsg" class="selection-info">Element Selected (Edit in Sidebar)</div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="symbols.js"></script>
+
+    <script>
+        const API_BASE = "https://awhirl-digestibly-refugio.ngrok-free.dev";
+
+        // Google Maps Tiles
+        const map = L.map('map', { zoomControl: false }).setView([23.4938, 79.9184], 15);
+        L.tileLayer('http://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
+            maxZoom: 20,
+            subdomains: ['mt0', 'mt1', 'mt2', 'mt3']
+        }).addTo(map);
+
+        L.control.zoom({ position: 'topright' }).addTo(map);
+
+        let currentTool = 'text';
+        let isPlacing = false;
+        let selectedLayer = null;
+        let elementLayers = L.layerGroup().addTo(map);
+
+        // DEFAULT STYLES: Background is 'transparent' by default now
+        let styles = {
+            scale: 1, rotate: 0, color: '#2c3e50', bg: 'transparent',
+            opacity: 1, radius: 0, bold: true, italic: false, shadow: true
+        };
+
+        // --- INIT UI ---
+        function initSymbols() {
+            const container = document.getElementById('dynamicSymbolGrid');
+            const lib = (typeof SYMBOL_LIBRARY !== 'undefined') ? SYMBOL_LIBRARY : [{icon:'📍', category:'Basic'}];
+            const cats = [...new Set(lib.map(s => s.category))];
+
+            cats.forEach(cat => {
+                container.innerHTML += `<div class="category-title">${cat}</div>`;
+                lib.filter(s => s.category === cat).forEach(s => {
+                    const div = document.createElement('div');
+                    div.className = 'icon-opt';
+                    div.innerHTML = s.icon;
+                    div.onclick = (e) => {
+    e.stopPropagation();           // 🔥 THIS IS THE KEY FIX
+    e.preventDefault();
+
+    selectIconUI(s.icon, div);
+    setTool('symbol');
+
+    // delay ensures map click is NOT stolen
+    setTimeout(() => {
+        activatePlacingMode('symbol');
+    }, 0);
+};
+
+
+
+
+                    container.appendChild(div);
+                });
+            });
+
+            loadFromServer();
+        }
+        initSymbols();
+
+        // --- ZOOM VISIBILITY LOGIC ---
+        map.on('zoomend', () => {
+            const zoom = map.getZoom();
+            if (zoom < 14) {
+                document.querySelectorAll('.map-element-wrapper').forEach(el => {
+                    el.closest('.leaflet-marker-icon').classList.add('element-hidden');
+                });
+            } else {
+                document.querySelectorAll('.map-element-wrapper').forEach(el => {
+                    el.closest('.leaflet-marker-icon').classList.remove('element-hidden');
+                });
+            }
+        });
+
+        function setTool(tool) {
+    currentTool = tool;
+
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.form-section').forEach(f => f.classList.remove('active'));
+
+    if (tool === 'text') {
+        document.querySelector('.tab:nth-child(1)').classList.add('active');
+    } else {
+        document.querySelector('.tab:nth-child(2)').classList.add('active');
+    }
+
+    document.getElementById(tool + 'Form').classList.add('active');
+
+    isPlacing = false;
+    updateStatusUI();
+}
+
+
+        function selectIconUI(icon, el) {
+            document.querySelectorAll('.icon-opt').forEach(i => i.classList.remove('selected'));
+            el.classList.add('selected');
+            document.getElementById('inpIcon').value = icon;
+        }
+
+        function addSubheading(value = '') {
+            const container = document.getElementById('subheadingContainer');
+            const div = document.createElement('div');
+            div.className = 'sub-input-group';
+            div.innerHTML = `
+                <input type="text" class="sub-input" placeholder="Next Line" value="${value}" oninput="updateLive()">
+                <button class="btn-small red" onclick="removeSubheading(this)">✕</button>
+            `;
+            container.appendChild(div);
+            updateLive();
+        }
+
+        function removeSubheading(btn) {
+            btn.parentElement.remove();
+            updateLive();
+        }
+
+        function toggleTransparent() {
+            if(!selectedLayer) return;
+            // Toggle between transparent and white
+            selectedLayer.data.style.bg = selectedLayer.data.style.bg === 'transparent' ? '#ffffff' : 'transparent';
+            renderElement(selectedLayer);
+        }
+
+        // --- PLACING LOGIC (UPDATED WITH HELP MSG) ---
+        function activatePlacingMode(tool) {
+    currentTool = tool;
+    isPlacing = true;
+    deselectElement();
+
+    const msg = document.getElementById('statusMsg');
+    msg.innerHTML =
+        tool === 'text'
+        ? "📝 Text ready hai — ab MAP pe click karo jahan place karna hai"
+        : "📍 Icon ready hai — ab MAP pe click karo jahan place karna hai";
+
+    updateStatusUI();
+}
+
+
+        function updateStatusUI() {
+            const msg = document.getElementById('statusMsg');
+            const mapEl = document.getElementById('map');
+            const btn = currentTool === 'text'
+    ? document.getElementById('btnPlaceText')
+    : null;
+
+            if (isPlacing) {
+                // Show the big green message
+                msg.classList.add('visible');
+                msg.innerHTML = currentTool === 'text'
+                    ? "📝 NOW CLICK ON MAP TO PLACE TEXT"
+                    : "📍 NOW CLICK ON MAP TO PLACE ICON";
+                mapEl.classList.add('placing-mode');
+                if (btn) btn.classList.add('active-mode');
+            } else {
+                msg.classList.remove('visible');
+                mapEl.classList.remove('placing-mode');
+                if (btn) btn.classList.remove('active-mode');
+            }
+        }
+
+        map.on('click', (e) => {
+    if (!isPlacing) return;
+
+    createElement(e.latlng);
+    isPlacing = false;
+    updateStatusUI();
+});
+
+
+        // --- ELEMENT CREATION ---
+        function createElement(latlng, existingData = null) {
+            const id = existingData ? existingData.id : Date.now();
+            const marker = L.marker(latlng, { draggable: true }).addTo(elementLayers);
+
+            if (existingData) {
+                marker.data = existingData;
+            } else {
+                const subInputs = document.querySelectorAll('.sub-input');
+                const subs = Array.from(subInputs).map(i => i.value);
+
+                marker.data = {
+                    id: id, type: currentTool,
+                    content: {
+                        main: currentTool === 'text' ? document.getElementById('inpMain').value || 'Title' : document.getElementById('inpIcon').value,
+                        sub: currentTool === 'text' ? subs : document.getElementById('inpSymLabel').value
+                    },
+                    info: document.getElementById('inpInfo').value,
+                    style: { ...styles }
+                };
+            }
+
+            marker.on('click', (e) => { L.DomEvent.stopPropagation(e); selectElement(marker); });
+            marker.on('dragend', () => selectElement(marker));
+
+            renderElement(marker);
+            if (!existingData) selectElement(marker);
+        }
+
+        // --- DELETE LOGIC ---
+        function deleteSelected() {
+            if (selectedLayer) {
+                elementLayers.removeLayer(selectedLayer);
+                selectedLayer = null;
+                document.getElementById('selectionMsg').classList.remove('visible');
+            } else {
+                alert("First select an element on the map to delete.");
+            }
+        }
+
+        function clearMap() {
+            if(confirm("Delete ALL elements from the map?")) {
+                elementLayers.clearLayers();
+                deselectElement();
+            }
+        }
+
+        // --- EDITING & RENDERING (BACKGROUND FIX) ---
+        function selectElement(marker) {
+            if(selectedLayer && selectedLayer !== marker) deselectElement();
+            selectedLayer = marker;
+
+            if(marker.getElement()) marker.getElement().classList.add('editing-active');
+            document.getElementById('selectionMsg').classList.add('visible');
+
+            const d = marker.data;
+            if(d.type === 'text') {
+                setTool('text');
+                document.getElementById('inpMain').value = d.content.main;
+
+                const container = document.getElementById('subheadingContainer');
+                container.innerHTML = '';
+                if(Array.isArray(d.content.sub)) {
+                    d.content.sub.forEach(val => addSubheading(val));
+                } else {
+                    addSubheading(d.content.sub || '');
+                }
+
+            } else {
+                document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                document.querySelectorAll('.tab')[1].classList.add('active');
+                document.querySelectorAll('.form-section').forEach(f => f.classList.remove('active'));
+                document.getElementById('symbolForm').classList.add('active');
+
+                document.getElementById('inpIcon').value = d.content.main;
+                document.getElementById('inpSymLabel').value = d.content.sub || '';
+            }
+            document.getElementById('inpInfo').value = d.info || '';
+
+            styles = { ...d.style };
+            document.getElementById('styScale').value = styles.scale;
+            document.getElementById('styRotate').value = styles.rotate;
+            document.getElementById('styColor').value = styles.color;
+            document.getElementById('styBg').value = styles.bg;
+            document.getElementById('styOpacity').value = styles.opacity;
+            document.getElementById('styRadius').value = styles.radius;
+            updateCheckBtn('btnBold', styles.bold);
+            updateCheckBtn('btnItalic', styles.italic);
+            updateCheckBtn('btnShadow', styles.shadow);
+        }
+
+        function deselectElement() {
+            if(!selectedLayer) return;
+            if(selectedLayer.getElement()) selectedLayer.getElement().classList.remove('editing-active');
+            selectedLayer = null;
+            document.getElementById('selectionMsg').classList.remove('visible');
+        }
+
+        function renderElement(marker) {
+            const d = marker.data;
+            const s = d.style;
+
+            // CLEAN BACKGROUND LOGIC:
+            // If bg is 'transparent', we remove border and box-shadow entirely.
+            let isTransparent = s.bg === 'transparent';
+
+            let borderStyle = 'none';
+            let paddingStyle = '0px'; // No padding for text if transparent
+
+            // Only use box-shadow if there is a background color.
+            // If transparent, we rely on text-shadow (handled below) for visibility.
+            let boxShadowStyle = 'none';
+
+            // Text Shadow (Drop Shadow) logic for Text Readability on Map
+            let textShadowStyle = (s.shadow) ? '2px 2px 0px rgba(255,255,255,0.8), 0 0 4px rgba(0,0,0,0.5)' : 'none';
+
+            let css = `
+                transform: rotate(${s.rotate}deg) scale(${s.scale});
+                opacity: ${s.opacity};
+                color: ${s.color};
+                background: ${d.type === 'text' ? 'transparent' : s.bg};
+                border-radius: ${s.radius}px;
+                padding: ${paddingStyle};
+                box-shadow: ${boxShadowStyle};
+                border: ${borderStyle};
+                font-weight: ${s.bold ? '800' : 'normal'};
+                font-style: ${s.italic ? 'italic' : 'normal'};
+                text-shadow: ${textShadowStyle};
+                white-space: nowrap;
+            `;
+
+            let html = '';
+            if (d.type === 'text') {
+                const subsHtml = Array.isArray(d.content.sub)
+                    ? d.content.sub.map(txt => `<div class="map-text-sub" style="font-size: 10px; opacity:0.9;">${txt}</div>`).join('')
+                    : `<div class="map-text-sub">${d.content.sub}</div>`;
+
+                html = `<div class="map-element-wrapper" style="${css}"><div style="font-size: 13px; line-height:1.2;">${d.content.main}</div>${subsHtml}</div>`;
+            } else {
+                html = `<div class="map-element-wrapper" style="${css}; width: 30px; height: 30px; justify-content:center;"><div style="font-size: 20px;">${d.content.main}</div>${d.content.sub ? `<div style="position:absolute; bottom:-15px; font-size:10px; font-weight:bold; background:white; padding:1px 4px; border-radius:4px; box-shadow:0 1px 3px rgba(0,0,0,0.2); color:#333; text-shadow:none;">${d.content.sub}</div>` : ''}</div>`;
+            }
+
+            marker.setIcon(L.divIcon({ className: 'custom-dummy', html: html, iconSize: [0,0], iconAnchor: [0,0] }));
+
+            if(d.info) marker.bindPopup(`<b>${d.content.main}</b><br>${d.info}`);
+            else marker.unbindPopup();
+        }
+
+        function updateLive() {
+            if(!selectedLayer) return;
+            const d = selectedLayer.data;
+            if(d.type === 'text') {
+                d.content.main = document.getElementById('inpMain').value;
+                const subInputs = document.querySelectorAll('.sub-input');
+                d.content.sub = Array.from(subInputs).map(i => i.value);
+            } else {
+                d.content.main = document.getElementById('inpIcon').value;
+                d.content.sub = document.getElementById('inpSymLabel').value;
+            }
+            d.info = document.getElementById('inpInfo').value;
+
+            d.style.scale = document.getElementById('styScale').value;
+            d.style.rotate = document.getElementById('styRotate').value;
+            d.style.color = document.getElementById('styColor').value;
+            d.style.bg = document.getElementById('styBg').value;
+            d.style.opacity = document.getElementById('styOpacity').value;
+            d.style.radius = document.getElementById('styRadius').value;
+
+            renderElement(selectedLayer);
+        }
+
+        function toggleStyle(prop) {
+            if(!selectedLayer) return;
+            selectedLayer.data.style[prop] = !selectedLayer.data.style[prop];
+            updateCheckBtn('btn' + prop.charAt(0).toUpperCase() + prop.slice(1), selectedLayer.data.style[prop]);
+            renderElement(selectedLayer);
+        }
+
+        function updateCheckBtn(id, active) {
+            if(active) document.getElementById(id).classList.add('active');
+            else document.getElementById(id).classList.remove('active');
+        }
+
+        function getMapData() {
+            const allData = [];
+            elementLayers.eachLayer(layer => {
+                if(layer instanceof L.Marker && layer.data) {
+                    const item = { ...layer.data, lat: layer.getLatLng().lat, lng: layer.getLatLng().lng };
+                    allData.push(item);
+                }
+            });
+            return allData;
+        }
+
+        async function saveToServer() {
+            const data = getMapData();
+            const statusEl = document.getElementById('saveStatus');
+            statusEl.innerText = "⏳ Saving...";
+
+            try {
+                const res = await fetch(`${API_BASE}/annotations`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'ngrok-skip-browser-warning': 'true'
+                    },
+                    body: JSON.stringify({ elements: data })
+                });
+                const json = await res.json();
+
+                if(json.success) {
+                    statusEl.innerText = "✅ Saved!";
+                    setTimeout(() => statusEl.innerText = "Ready", 2000);
+                } else {
+                    statusEl.innerText = "❌ Failed";
+                    alert("Save failed");
+                }
+            } catch(e) {
+                statusEl.innerText = "❌ Network Error";
+                console.error(e);
+            }
+        }
+
+        async function loadFromServer() {
+            const statusEl = document.getElementById('saveStatus');
+            statusEl.innerText = "⏳ Loading...";
+            try {
+                const res = await fetch(`${API_BASE}/annotations`, {
+                    headers: {"ngrok-skip-browser-warning": "true"}
+                });
+                const json = await res.json();
+
+                if(json.data && Array.isArray(json.data)) {
+                    elementLayers.clearLayers();
+                    json.data.forEach(item => {
+                        const latlng = [item.lat, item.lng];
+                        createElement(latlng, item);
+                    });
+                    statusEl.innerText = "✅ Loaded";
+                }
+            } catch(e) {
+                console.error("Load failed", e);
+                statusEl.innerText = "⚠️ Load Failed";
+            }
+        }
+
+        function exportJSON() {
+            const data = getMapData();
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(data, null, 2));
+            const downloadAnchorNode = document.createElement('a');
+            downloadAnchorNode.setAttribute("href", dataStr);
+            downloadAnchorNode.setAttribute("download", "map_annotations.json");
+            document.body.appendChild(downloadAnchorNode);
+            downloadAnchorNode.click();
+            downloadAnchorNode.remove();
+        }
+    </script>
+</body>
+</html>

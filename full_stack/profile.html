@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bus Profile Super Admin</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        :root { --primary: #1a73e8; --bg: #f0f2f5; --card: #fff; --text: #202124; }
+        body { font-family: 'Google Sans', sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 20px; display: flex; justify-content: center; }
+
+        .container { width: 100%; max-width: 600px; background: var(--card); border-radius: 16px; padding: 30px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); }
+        h2 { margin-top: 0; color: var(--primary); display: flex; align-items: center; gap: 10px; }
+
+        .section-title { font-size: 0.9rem; text-transform: uppercase; color: #5f6368; font-weight: 700; margin: 25px 0 10px 0; border-bottom: 2px solid #eee; padding-bottom: 5px; }
+
+        .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+        .full-width { grid-column: span 2; }
+
+        .input-group { margin-bottom: 10px; }
+        label { display: block; font-size: 0.85rem; margin-bottom: 5px; color: #444; font-weight: 500; }
+        input, select { width: 100%; padding: 12px; border: 1px solid #ccc; border-radius: 8px; font-family: inherit; box-sizing: border-box; transition: 0.2s; }
+        input:focus { border-color: var(--primary); outline: none; box-shadow: 0 0 0 3px rgba(26,115,232,0.1); }
+
+        /* Photo Uploader */
+        .photo-upload-area { border: 2px dashed #ccc; border-radius: 12px; padding: 20px; text-align: center; cursor: pointer; transition: 0.2s; background: #fafafa; }
+        .photo-upload-area:hover { border-color: var(--primary); background: #eef5ff; }
+        .photo-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 15px; }
+        .photo-preview { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 8px; border: 1px solid #ddd; }
+        .photo-wrapper { position: relative; }
+        .remove-photo { position: absolute; top: -5px; right: -5px; background: red; color: white; border-radius: 50%; width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 12px; }
+
+        /* Amenities Tags */
+        .amenities-container { display: flex; flex-wrap: wrap; gap: 8px; }
+        .amenity-tag { background: #eee; padding: 6px 12px; border-radius: 20px; font-size: 0.85rem; cursor: pointer; border: 1px solid transparent; user-select: none; }
+        .amenity-tag.selected { background: var(--primary); color: white; border-color: var(--primary); }
+
+        .save-btn { width: 100%; background: var(--primary); color: white; border: none; padding: 16px; border-radius: 12px; font-size: 1.1rem; font-weight: 700; cursor: pointer; margin-top: 30px; box-shadow: 0 4px 10px rgba(26,115,232,0.3); transition: transform 0.1s; }
+        .save-btn:active { transform: scale(0.98); }
+
+        #status { margin-top: 15px; text-align: center; font-weight: 500; }
+        .hint { font-size: 0.75rem; color: #888; margin-top: 4px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2><i class="fa-solid fa-bus-simple"></i> Bus Profile Manager</h2>
+    <p style="color: #666; font-size: 0.9rem;">Set detailed info for your fleet. Use Bus ID: <b>MJH01</b> for testing.</p>
+
+    <div class="section-title">Identity & Operations</div>
+    <div class="form-grid">
+        <div class="input-group full-width">
+            <label>Bus ID (Matches GPSLogger)</label>
+            <input type="text" id="busId" value="MJH01" placeholder="e.g. MJH01">
+        </div>
+        <div class="input-group">
+            <label>Route Code (Links Stops)</label>
+            <input type="text" id="routeCode" placeholder="e.g. R-101">
+            <div class="hint">Matches Route Code in Admin Map</div>
+        </div>
+        <div class="input-group">
+            <label>Service Type</label>
+            <input type="text" id="type" placeholder="e.g. AC Sleeper">
+        </div>
+        <div class="input-group">
+            <label>Fare (₹)</label>
+            <input type="number" id="fare" placeholder="150">
+        </div>
+        <div class="input-group">
+            <label>Rating (1-5)</label>
+            <input type="number" id="rating" step="0.1" max="5" placeholder="4.5">
+        </div>
+    </div>
+
+    <div class="section-title">Crew & Amenities</div>
+    <div class="form-grid">
+        <div class="input-group">
+            <label>Driver Name</label>
+            <input type="text" id="driverName" placeholder="Driver Name">
+        </div>
+        <div class="input-group">
+            <label>Contact Number</label>
+            <input type="text" id="contactNumber" placeholder="+91...">
+        </div>
+    </div>
+
+    <label style="margin-top:10px;">Amenities (Tap to select)</label>
+    <div class="amenities-container" id="amenitiesBox">
+        <div class="amenity-tag" onclick="toggleAmenity(this)">WiFi</div>
+        <div class="amenity-tag" onclick="toggleAmenity(this)">AC</div>
+        <div class="amenity-tag" onclick="toggleAmenity(this)">USB Charging</div>
+        <div class="amenity-tag" onclick="toggleAmenity(this)">Water Bottle</div>
+        <div class="amenity-tag" onclick="toggleAmenity(this)">Blanket</div>
+        <div class="amenity-tag" onclick="toggleAmenity(this)">CCTV</div>
+        <div class="amenity-tag" onclick="toggleAmenity(this)">GPS Tracking</div>
+    </div>
+
+    <div class="section-title">Bus Photos</div>
+    <div class="photo-upload-area" onclick="document.getElementById('fileInput').click()">
+        <i class="fa-solid fa-cloud-arrow-up" style="font-size: 24px; color: var(--primary);"></i><br>
+        Click to Upload Photos
+    </div>
+    <input type="file" id="fileInput" multiple accept="image/*" style="display:none" onchange="handleFiles(this.files)">
+
+    <div class="photo-grid" id="photoGrid"></div>
+
+    <button class="save-btn" onclick="saveProfile()">SAVE EVERYTHING</button>
+    <div id="status"></div>
+</div>
+
+<script>
+    const API_BASE = "http://localhost:5000"; // Change if using Ngrok
+    let uploadedPhotos = [];
+
+    // 1. Handle File Upload (Convert to Base64)
+    function handleFiles(files) {
+        if (!files.length) return;
+
+        Array.from(files).forEach(file => {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const base64 = e.target.result;
+                uploadedPhotos.push(base64);
+                renderPhotos();
+            };
+            reader.readAsDataURL(file);
+        });
+    }
+
+    // 2. Render Photos
+    function renderPhotos() {
+        const grid = document.getElementById('photoGrid');
+        grid.innerHTML = '';
+        uploadedPhotos.forEach((src, index) => {
+            const div = document.createElement('div');
+            div.className = 'photo-wrapper';
+            div.innerHTML = `
+                <img src="${src}" class="photo-preview">
+                <div class="remove-photo" onclick="removePhoto(${index})">&times;</div>
+            `;
+            grid.appendChild(div);
+        });
+    }
+
+    function removePhoto(index) {
+        uploadedPhotos.splice(index, 1);
+        renderPhotos();
+    }
+
+    // 3. Toggle Amenities
+    function toggleAmenity(el) {
+        el.classList.toggle('selected');
+    }
+
+    // 4. Load Existing Data (Optional - useful for editing)
+    async function loadExisting() {
+        const id = document.getElementById('busId').value;
+        try {
+            const res = await fetch(`${API_BASE}/buses/${id}/profile`);
+            const json = await res.json();
+            if(json.profile) {
+                const p = json.profile;
+                document.getElementById('type').value = p.type || '';
+                document.getElementById('routeCode').value = p.routeCode || '';
+                document.getElementById('fare').value = p.fare || '';
+                document.getElementById('rating').value = p.rating || '';
+                document.getElementById('driverName').value = p.driverName || '';
+                document.getElementById('contactNumber').value = p.contactNumber || '';
+
+                // Load Photos
+                if(p.photos) {
+                    uploadedPhotos = p.photos;
+                    renderPhotos();
+                }
+
+                // Load Amenities
+                if(p.amenities) {
+                    document.querySelectorAll('.amenity-tag').forEach(tag => {
+                        if(p.amenities.includes(tag.innerText)) tag.classList.add('selected');
+                        else tag.classList.remove('selected');
+                    });
+                }
+                console.log("Loaded existing profile for " + id);
+            }
+        } catch(e) { console.log("New profile or load error"); }
+    }
+
+    // 5. Save Function
+    async function saveProfile() {
+        const id = document.getElementById('busId').value.trim();
+        const status = document.getElementById('status');
+
+        if(!id) { alert("Bus ID required!"); return; }
+
+        status.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Saving to Database...';
+
+        // Collect Amenities
+        const amenities = [];
+        document.querySelectorAll('.amenity-tag.selected').forEach(el => amenities.push(el.innerText));
+
+        const payload = {
+            type: document.getElementById('type').value,
+            routeCode: document.getElementById('routeCode').value,
+            fare: Number(document.getElementById('fare').value),
+            rating: Number(document.getElementById('rating').value),
+            driverName: document.getElementById('driverName').value,
+            contactNumber: document.getElementById('contactNumber').value,
+            amenities: amenities,
+            photos: uploadedPhotos
+        };
+
+        try {
+            const res = await fetch(`${API_BASE}/buses/${id}/profile`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            const json = await res.json();
+            if(json.success) {
+                status.innerHTML = `<span style="color:green"><i class="fa-solid fa-check-circle"></i> Saved Successfully!</span>`;
+            } else {
+                status.innerHTML = `<span style="color:red">Error: ${json.error}</span>`;
+            }
+        } catch(e) {
+            status.innerHTML = `<span style="color:red">Network Error! Is server running?</span>`;
+            console.error(e);
+        }
+    }
+
+    // Load data when Bus ID input loses focus (optional ease of use)
+    document.getElementById('busId').addEventListener('blur', loadExisting);
+</script>
+
+</body>
+</html>

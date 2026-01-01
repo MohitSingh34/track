@@ -1,0 +1,1065 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>BusMitra - Live Tracking</title>
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&family=Google+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+
+    <style>
+        :root {
+            /* Light Theme Variables */
+            --primary: #1a73e8;
+            --bg-color: #f8f9fa;
+            --card-bg: #ffffff;
+            --text-main: #202124;
+            --text-sub: #5f6368;
+            --border: #dadce0;
+            --shadow: 0 2px 6px rgba(0,0,0,0.15);
+            --sheet-shadow: 0 -2px 10px rgba(0,0,0,0.1);
+            --accent-green: #188038;
+            --accent-red: #d93025;
+            --accent-orange: #f29900;
+            --input-bg: #f1f3f4;
+            --font-head: 'Google Sans', sans-serif;
+        }
+
+        /* --- PROFESSIONAL DARK THEME --- */
+        [data-theme="dark"] {
+            --primary: #3daee9;
+            --bg-color: #1c1e21;
+            --card-bg: #2a2e32;
+            --text-main: #eff0f1;
+            --text-sub: #b0b6bc;
+            --border: #3d4246;
+            --shadow: 0 4px 6px rgba(0,0,0,0.3);
+            --sheet-shadow: 0 -4px 20px rgba(0,0,0,0.4);
+            --accent-green: #2ecc71;
+            --accent-red: #e74c3c;
+            --accent-orange: #f39c12;
+            --input-bg: #31363b;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Roboto', sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body, html {
+            height: 100%;
+            width: 100%;
+            overflow: hidden;
+            background: var(--bg-color);
+            color: var(--text-main);
+            transition: background 0.3s ease, color 0.3s ease;
+        }
+
+        /* --- MAP CONTAINER --- */
+        #map {
+            height: 100vh;
+            width: 100%;
+            z-index: 1;
+            position: absolute;
+            top: 0;
+            left: 0;
+            background: #e5e3df;
+            cursor: default; /* Changed from crosshair */
+        }
+
+        /* --- UI COMPONENTS --- */
+
+        /* 1. Search Bar */
+        .search-container {
+            position: absolute; top: 16px; left: 16px; right: 16px; z-index: 1000;
+            display: flex; gap: 12px; pointer-events: none;
+            transition: transform 0.3s ease;
+        }
+
+        .search-box {
+            background: var(--card-bg); flex-grow: 1; height: 48px; border-radius: 8px;
+            display: flex; align-items: center; padding: 0 16px; box-shadow: var(--shadow);
+            pointer-events: auto; border: 1px solid transparent; transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+        }
+        [data-theme="dark"] .search-box { border: 1px solid var(--border); }
+
+        .nav-icon-btn {
+            color: var(--text-sub); font-size: 1.2rem; margin-right: 16px; cursor: pointer;
+            width: 24px; text-align: center; transition: transform 0.2s, opacity 0.2s;
+        }
+        .nav-icon-btn:active { transform: scale(0.8); }
+
+        .search-input {
+            border: none; outline: none; flex-grow: 1; font-size: 1rem;
+            color: var(--text-main); background: transparent;
+        }
+
+        /* 2. Profile Icon */
+        .profile-container {
+            width: 48px; height: 48px; background: var(--card-bg); border-radius: 50%;
+            box-shadow: var(--shadow); display: flex; align-items: center; justify-content: center;
+            pointer-events: auto; cursor: pointer; position: relative; border: 1px solid transparent;
+            transition: transform 0.2s;
+        }
+        .profile-container:active { transform: scale(0.95); }
+        [data-theme="dark"] .profile-container { border: 1px solid var(--border); }
+
+        .profile-initial {
+            width: 32px; height: 32px; background: var(--primary); color: white;
+            border-radius: 50%; display: flex; align-items: center; justify-content: center;
+            font-weight: bold; font-size: 1.1rem;
+        }
+
+        /* Profile Dropdown */
+        .profile-dropdown {
+            position: absolute; top: 60px; right: 0; background: var(--card-bg); width: 260px;
+            border-radius: 8px; box-shadow: var(--shadow); display: none;
+            flex-direction: column; overflow: hidden; transform-origin: top right;
+            animation: fadeIn 0.2s ease-out; border: 1px solid var(--border);
+        }
+        .profile-dropdown.active { display: flex; }
+
+        .dropdown-item {
+            padding: 14px 20px; display: flex; align-items: center; gap: 15px;
+            color: var(--text-main); cursor: pointer; font-size: 0.95rem;
+            transition: background 0.2s;
+        }
+        .dropdown-item:hover { background: rgba(128,128,128,0.1); }
+        .dropdown-divider { height: 1px; background: var(--border); margin: 0; }
+
+        /* 3. Chips */
+        .chip-container {
+            position: absolute; top: 76px; left: 0; width: 100%; overflow-x: auto;
+            white-space: nowrap; padding: 0 16px; z-index: 1000; scrollbar-width: none; pointer-events: none;
+        }
+        .chip-container > * { pointer-events: auto; }
+        .chip-container::-webkit-scrollbar { display: none; }
+
+        .chip {
+            display: inline-flex; align-items: center; background: var(--card-bg);
+            padding: 8px 16px; border-radius: 20px; margin-right: 10px; font-size: 0.9rem;
+            font-weight: 500; color: var(--text-sub); box-shadow: var(--shadow); cursor: pointer;
+            border: 1px solid transparent; transition: all 0.2s;
+        }
+        [data-theme="dark"] .chip { border: 1px solid var(--border); }
+        .chip.active {
+            background: var(--primary); color: white; border-color: var(--primary);
+        }
+        [data-theme="dark"] .chip.active { color: #1c1e21; font-weight: 700; }
+
+        /* 4. Traffic Legend */
+        .traffic-legend {
+            position: absolute; top: 135px; right: 16px; background: var(--card-bg);
+            padding: 10px 14px; border-radius: 8px; box-shadow: var(--shadow);
+            z-index: 1000; font-size: 0.8rem; display: flex; flex-direction: column; gap: 6px;
+            pointer-events: auto; border: 1px solid transparent; opacity: 0.9;
+        }
+        [data-theme="dark"] .traffic-legend { border: 1px solid var(--border); }
+        .legend-item { display: flex; align-items: center; gap: 8px; color: var(--text-main); }
+        .dot { width: 8px; height: 8px; border-radius: 50%; }
+        .dot.green { background: var(--accent-green); }
+        .dot.orange { background: var(--accent-orange); }
+        .dot.red { background: var(--accent-red); }
+
+        /* 5. Floating Action Buttons (FABs) */
+        .fab-container {
+            position: absolute; right: 16px; bottom: 280px; display: flex; flex-direction: column;
+            gap: 12px; z-index: 1000; transition: bottom 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); pointer-events: none;
+        }
+        .fab-btn {
+            width: 48px; height: 48px; background: var(--card-bg); border-radius: 50%;
+            box-shadow: var(--shadow); display: flex; align-items: center; justify-content: center;
+            color: var(--text-sub); font-size: 1.2rem; cursor: pointer; border: none; pointer-events: auto;
+            transition: transform 0.2s;
+        }
+        [data-theme="dark"] .fab-btn { border: 1px solid var(--border); }
+        .fab-btn:active { transform: scale(0.92); }
+        .fab-btn.primary { color: var(--primary); }
+
+        /* 6. Side Drawer */
+        .side-drawer-overlay {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    background: transparent;  /* <-- Isse black color gayab ho jayega */
+    z-index: 2000; display: none; opacity: 0; transition: opacity 0.3s;
+    pointer-events: none; /* <-- Optional: Agar tum chahte ho ki menu khula ho tab bhi map pe click ho sake */
+}
+        .side-drawer-overlay.active { display: block; opacity: 1; }
+
+        .side-drawer {
+            position: fixed; top: 0; left: -300px; width: 300px; height: 100%;
+            background: var(--card-bg); z-index: 2001; transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 2px 0 10px rgba(0,0,0,0.2); display: flex; flex-direction: column;
+        }
+        .side-drawer.active { left: 0; }
+
+        .drawer-header {
+            background: var(--primary); color: white; padding: 24px;
+            font-family: var(--font-head); font-size: 1.4rem; display: flex; flex-direction: column; gap: 8px;
+        }
+        [data-theme="dark"] .drawer-header { background: #232629; border-bottom: 1px solid var(--border); color: var(--text-main); }
+
+        .drawer-login-btn {
+            background: white; color: var(--primary); border: none; padding: 8px 16px;
+            border-radius: 4px; font-weight: 500; cursor: pointer; align-self: flex-start; margin-top: 10px;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.2);
+        }
+        [data-theme="dark"] .drawer-login-btn { background: var(--primary); color: #fff; }
+
+        .drawer-item {
+            padding: 16px 24px; border-bottom: 1px solid var(--border); color: var(--text-main);
+            display: flex; align-items: center; gap: 20px; cursor: pointer; font-size: 1rem;
+            transition: background 0.2s;
+        }
+        .drawer-item:hover { background: rgba(128,128,128,0.1); }
+        .drawer-item i { color: var(--text-sub); width: 24px; text-align: center; }
+        .drawer-item.active-item { background: rgba(61, 174, 233, 0.1); color: var(--primary); }
+        .drawer-item.active-item i { color: var(--primary); }
+
+        /* 7. Bottom Sheet */
+        .bottom-sheet {
+            position: absolute; bottom: 0; left: 0; width: 100%; background: var(--card-bg);
+            z-index: 1001; border-radius: 24px 24px 0 0; box-shadow: var(--sheet-shadow);
+            transform: translateY(0); transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+            max-height: 85vh; display: flex; flex-direction: column;
+        }
+        [data-theme="dark"] .bottom-sheet { border-top: 1px solid var(--border); }
+
+        .sheet-handle-bar { width: 100%; padding: 12px 0; display: flex; justify-content: center; cursor: pointer; flex-shrink: 0; touch-action: none; }
+        .sheet-handle { width: 40px; height: 4px; background: var(--border); border-radius: 2px; }
+        .sheet-content { padding: 0 0 20px 0; overflow-y: auto; flex-grow: 1; }
+
+        /* 8. Views & Transitions */
+        .list-view-container, .bus-detail-container {
+            transition: opacity 0.3s ease, transform 0.3s ease;
+        }
+        /* Hidden state for simple JS toggle */
+        .hidden { display: none !important; }
+
+        .filter-section { margin-bottom: 15px; }
+        .list-view-container { padding: 0 20px; }
+
+        .inline-search, .route-input {
+            width: 100%; padding: 12px 16px; border-radius: 8px; border: 1px solid transparent;
+            background: var(--input-bg); color: var(--text-main); outline: none; margin-bottom: 10px;
+            font-size: 0.95rem; transition: border-color 0.2s;
+        }
+        .inline-search:focus, .route-input:focus { border-color: var(--primary); background: var(--card-bg); }
+
+        .bus-card {
+            background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px;
+            padding: 16px; display: flex; align-items: center; gap: 16px; cursor: pointer; margin-bottom: 12px;
+            transition: transform 0.1s, box-shadow 0.2s;
+        }
+        .bus-card:active { transform: scale(0.98); }
+        .bus-icon-circle {
+            width: 44px; height: 44px; background: rgba(61, 174, 233, 0.15); border-radius: 50%;
+            display: flex; align-items: center; justify-content: center; color: var(--primary); font-size: 1.1rem;
+        }
+
+        /* 9. Single Bus Detail (Rich UI) */
+        .info-header-img { width: 100%; height: 200px; object-fit: cover; display: block; }
+
+        .stats-bar {
+            display: flex; justify-content: space-around; padding: 16px;
+            background: var(--input-bg); margin: 0 20px 20px 20px; border-radius: 12px;
+        }
+        .stat-item { text-align: center; }
+        .stat-val { font-size: 1.2rem; font-weight: 700; color: var(--text-main); font-family: var(--font-head); }
+        .stat-lbl { font-size: 0.75rem; color: var(--text-sub); text-transform: uppercase; letter-spacing: 0.5px; margin-top: 4px; }
+
+        .tab-bar { display: flex; border-bottom: 1px solid var(--border); background: var(--card-bg); position: sticky; top: 0; z-index: 10; }
+        .tab {
+            flex: 1; text-align: center; padding: 14px; font-weight: 500; color: var(--text-sub); cursor: pointer;
+            border-bottom: 3px solid transparent; transition: color 0.2s;
+        }
+        .tab.active { color: var(--primary); border-bottom-color: var(--primary); }
+
+        .info-body { padding: 20px; padding-bottom: 90px; }
+        .bus-title-large { font-size: 1.5rem; font-weight: 500; color: var(--text-main); font-family: var(--font-head); }
+        .bus-meta { font-size: 0.95rem; color: var(--text-sub); margin-top: 6px; }
+
+        .action-row { display: flex; gap: 16px; margin: 20px 0; overflow-x: auto; padding-bottom: 5px; }
+        .action-btn { display: flex; flex-direction: column; align-items: center; gap: 8px; min-width: 64px; color: var(--primary); cursor: pointer; }
+        .action-circle {
+            width: 44px; height: 44px; border-radius: 50%; border: 1px solid var(--border); background: var(--card-bg);
+            display: flex; align-items: center; justify-content: center; font-size: 1.2rem; transition: background 0.2s;
+        }
+        .action-circle:active { background: rgba(128,128,128,0.1); }
+        .action-label { font-size: 0.8rem; color: var(--primary); font-weight: 500; }
+
+        /* Timeline */
+        .journey-container { padding: 10px 0; position: relative; }
+        .journey-line { position: absolute; top: 18px; bottom: 30px; left: 20px; width: 2px; background: var(--border); z-index: 0; }
+
+        .station-row { display: flex; align-items: flex-start; margin-bottom: 28px; position: relative; z-index: 1; }
+        .station-dot {
+            width: 14px; height: 14px; background: var(--card-bg); border: 3px solid var(--text-sub);
+            border-radius: 50%; flex-shrink: 0; margin-left: 14px; margin-top: 4px; box-sizing: content-box;
+        }
+        .station-row.passed .station-dot { background: var(--primary); border-color: var(--primary); }
+
+        .station-info { padding-left: 20px; flex-grow: 1; }
+        .station-name { font-weight: 500; color: var(--text-main); font-size: 1.05rem; }
+        .station-time { font-size: 0.9rem; color: var(--text-sub); }
+        .station-status { font-size: 0.8rem; font-weight: 500; margin-top: 4px; }
+        .status-green { color: var(--accent-green); }
+        .status-red { color: var(--accent-red); }
+
+        /* Ticket Floater */
+        .ticket-floater {
+            position: fixed; bottom: 20px; left: 20px; right: 20px;
+            background: #202124; color: white; padding: 14px 24px; border-radius: 32px;
+            display: flex; justify-content: space-between; align-items: center;
+            box-shadow: 0 6px 20px rgba(0,0,0,0.3); cursor: pointer; z-index: 1002;
+            transition: transform 0.2s;
+        }
+        .ticket-floater:active { transform: scale(0.98); }
+        [data-theme="dark"] .ticket-floater { background: var(--primary); color: #fff; }
+
+        .photo-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-top: 10px; }
+        .photo-item { aspect-ratio: 1; background: #ddd; border-radius: 4px; overflow: hidden; position: relative; }
+        .photo-item img { width: 100%; height: 100%; object-fit: cover; }
+        .add-photo-btn {
+            aspect-ratio: 1; border: 2px dashed var(--border); display: flex; flex-direction: column;
+            align-items: center; justify-content: center; color: var(--text-sub); cursor: pointer; border-radius: 4px;
+        }
+
+        /* Settings Modal */
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.6); z-index: 3000; display: none; align-items: center; justify-content: center;
+        }
+        .modal-overlay.active { display: flex; animation: fadeIn 0.2s; }
+        .modal-card {
+            background: var(--card-bg); width: 90%; max-width: 360px; border-radius: 16px;
+            padding: 24px; box-shadow: 0 10px 40px rgba(0,0,0,0.4);
+        }
+        .setting-label { display: block; margin-bottom: 8px; color: var(--text-sub); font-size: 0.9rem; }
+        .setting-select, .setting-input { width: 100%; padding: 12px; margin-bottom: 16px; }
+
+        /* Animations */
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes pop { 50% { transform: scale(1.3); } }
+        .animate-pop { animation: pop 0.3s ease; }
+
+        /* Map Element CSS (From Annotation Studio) */
+        .map-element-wrapper {
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            text-align: center; white-space: nowrap;
+        }
+        .map-text-sub { margin-top: 1px; }
+
+    </style>
+</head>
+<body>
+
+    <!-- SIDE DRAWER -->
+    <div class="side-drawer-overlay" onclick="toggleDrawer()"></div>
+    <div class="side-drawer" id="sideDrawer">
+        <div class="drawer-header" id="drawerHeader">
+            <!-- Populated by JS -->
+        </div>
+        <div class="drawer-item active-item" onclick="handleBackAction()"><i class="fa-solid fa-house"></i> Home</div>
+        <div class="drawer-item"><i class="fa-solid fa-clock-rotate-left"></i> Your Trips</div>
+        <div class="drawer-item"><i class="fa-solid fa-heart"></i> Saved Buses</div>
+        <div class="drawer-item"><i class="fa-solid fa-map-location-dot"></i> Offline Maps</div>
+        <div class="drawer-item" onclick="openSettings()"><i class="fa-solid fa-gear"></i> Settings</div>
+        <div style="margin-top: auto; padding: 24px; font-size: 0.85rem; color: var(--text-sub);">
+            BusMitra v4.3 • Mobile Ready
+        </div>
+    </div>
+
+    <!-- SETTINGS MODAL -->
+    <div class="modal-overlay" id="settingsModal">
+        <div class="modal-card">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 20px;">
+                <h2 style="font-family: var(--font-head); color: var(--text-main);">Settings</h2>
+                <button onclick="closeSettings()" style="background:transparent; border:none; color:var(--text-sub); font-size:1.2rem;"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+
+            <label class="setting-label">Default Map View</label>
+            <select class="setting-select" id="mapTypeSelect" onchange="changeMapType(this.value)">
+                <option value="street">Standard Street</option>
+                <option value="satellite">Satellite Earth</option>
+                <option value="hybrid">Hybrid Labels</option>
+            </select>
+
+            <label class="setting-label">Startup Location</label>
+            <select class="setting-select" id="locationSelect" onchange="handleLocationChange(this.value)">
+                <option value="majholi">Majholi</option>
+                <option value="jabalpur">Jabalpur</option>
+                <option value="custom">📍 Set Coordinates...</option>
+            </select>
+
+            <div id="customLocInputs" class="hidden">
+                <input type="number" class="setting-input" id="customLat" placeholder="Latitude">
+                <input type="number" class="setting-input" id="customLng" placeholder="Longitude">
+                <button onclick="applyCustomLocation()" style="width:100%; padding:12px; background:var(--primary); color:white; border:none; border-radius:8px; font-weight:500;">Apply</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MAIN UI OVERLAY -->
+    <div class="search-container">
+        <div class="search-box">
+            <!-- Dynamic Navigation Icon (Hamburger / Back Arrow) -->
+            <div class="nav-icon-btn" id="navIconBtn" onclick="handleNavIconClick()">
+                <i class="fa-solid fa-bars"></i>
+            </div>
+            <input type="text" class="search-input" id="globalSearch" placeholder="Search bus, stop or route" onclick="handleSearchFocus()">
+            <i class="fa-solid fa-microphone" style="color: var(--text-sub); margin-right: 12px;"></i>
+            <i class="fa-solid fa-magnifying-glass" style="color: var(--primary);"></i>
+        </div>
+        <div class="profile-container" onclick="toggleProfileMenu()">
+            <div id="profileIconContent"><i class="fa-regular fa-user" style="color: var(--text-sub);"></i></div>
+            <div class="profile-dropdown" id="profileDropdown">
+                <div class="dropdown-item" style="pointer-events: none; opacity: 0.7;"><span id="dropdownName">Guest</span></div>
+                <div class="dropdown-divider"></div>
+                <div class="dropdown-item" onclick="toggleTheme()"><i class="fa-solid fa-moon"></i> Appearance: <span id="themeLabel">Light</span></div>
+                <div class="dropdown-item" onclick="openSettings()"><i class="fa-solid fa-gear"></i> Settings</div>
+                <div class="dropdown-divider"></div>
+                <div class="dropdown-item" id="authActionBtn" onclick="toggleLogin()">Login</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="traffic-legend">
+        <div class="legend-item"><span class="dot green"></span> Fast</div>
+        <div class="legend-item"><span class="dot orange"></span> Slow</div>
+        <div class="legend-item"><span class="dot red"></span> Heavy</div>
+    </div>
+
+    <div class="chip-container">
+        <div class="chip active" id="chipAll" onclick="filterMap('all')"><i class="fa-solid fa-bus"></i> All Buses</div>
+        <div class="chip" onclick="filterMap('stops')"><i class="fa-solid fa-stopwatch"></i> Stops</div>
+        <div class="chip" onclick="filterMap('routes')"><i class="fa-solid fa-road"></i> Routes</div>
+    </div>
+
+    <div id="map"></div>
+
+    <div class="fab-container" id="fabContainer">
+        <button class="fab-btn" onclick="toggleMapLayerManual()"><i class="fa-solid fa-layer-group"></i></button>
+        <button class="fab-btn primary" onclick="recenterMap()"><i class="fa-solid fa-crosshairs"></i></button>
+    </div>
+
+    <!-- BOTTOM SHEET -->
+    <div class="bottom-sheet" id="bottomSheet">
+        <div class="sheet-handle-bar" onclick="toggleSheet()"><div class="sheet-handle"></div></div>
+        <div class="sheet-content">
+
+            <!-- LIST VIEW -->
+            <div id="allBusesView" class="list-view-container">
+                <h3 style="margin: 10px 0; font-family: var(--font-head); color: var(--text-main); font-weight: 500;">Explore</h3>
+                <div class="filter-section">
+                    <input type="text" class="inline-search" id="busSearchInput" placeholder="Bus Number (e.g. MP 20)" onkeyup="filterBuses()">
+                    <div class="route-inputs" style="display:flex; gap:10px;">
+                        <input type="text" class="route-input" id="startStopInput" placeholder="From" onkeyup="filterBuses()">
+                        <input type="text" class="route-input" id="endStopInput" placeholder="To" onkeyup="filterBuses()">
+                    </div>
+                </div>
+                <div id="busListContainer">
+                    <div style="text-align:center; padding:20px; color:#999;">Loading live buses...</div>
+                </div>
+            </div>
+
+            <!-- SINGLE BUS DETAIL / ROUTE DETAIL -->
+            <div id="singleBusView" class="bus-detail-container hidden">
+                <!-- Floating Back Button on Image -->
+                <div style="position: relative;">
+                    <img src="https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?q=80&w=600&auto=format&fit=crop" class="info-header-img">
+                    <button onclick="handleBackAction()" style="position: absolute; top: 16px; left: 16px; background: rgba(0,0,0,0.3); backdrop-filter: blur(4px); border: none; color: white; width: 40px; height: 40px; border-radius: 50%; cursor: pointer; z-index: 5;"><i class="fa-solid fa-arrow-left"></i></button>
+                </div>
+
+                <div class="info-body">
+                    <div class="bus-title-large" id="detailBusTitle">Bus Name</div>
+                    <div class="bus-meta" id="detailBusSub">Bus Service • AC Seater</div>
+
+                    <div style="display: flex; gap: 8px; margin-top: 10px;">
+                        <span style="font-size: 0.85rem; background: var(--accent-green); color: white; padding: 4px 10px; border-radius: 12px; font-weight: 500;">4.5 <i class="fa-solid fa-star" style="font-size:0.7rem;"></i></span>
+                        <span style="font-size: 0.85rem; color: var(--text-sub); display: flex; align-items: center;" id="detailLastUpdate"><i class="fa-solid fa-clock" style="margin-right:4px;"></i> Live</span>
+                    </div>
+
+                    <div class="action-row">
+                        <div class="action-btn" onclick="toggleBusFav()">
+                            <div class="action-circle"><i class="fa-regular fa-heart" id="busFavIcon"></i></div>
+                            <span class="action-label">Save</span>
+                        </div>
+                        <div class="action-btn">
+                            <div class="action-circle"><i class="fa-solid fa-share-nodes"></i></div>
+                            <span class="action-label">Share</span>
+                        </div>
+                        <div class="action-btn" onclick="document.getElementById('photoUpload').click()">
+                            <div class="action-circle"><i class="fa-solid fa-camera"></i></div>
+                            <span class="action-label">Add Photo</span>
+                        </div>
+                        <input type="file" id="photoUpload" style="display: none;" accept="image/*" onchange="handlePhotoUpload(this)">
+                    </div>
+
+                    <div class="stats-bar">
+                        <div class="stat-item">
+                            <div class="stat-val" style="color: var(--primary);" id="detailSpeed">0 <small>km/h</small></div>
+                            <div class="stat-lbl" id="detailSpeedLabel">Speed</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-val" id="detailDistance">Live</div>
+                            <div class="stat-lbl" id="detailDistanceLabel">Tracking</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-val">₹--</div>
+                            <div class="stat-lbl">Ticket</div>
+                        </div>
+                    </div>
+
+                    <div class="tab-bar">
+                        <div class="tab active" onclick="switchTab('overview')">Overview</div>
+                        <div class="tab" onclick="switchTab('photos')">Photos</div>
+                    </div>
+
+                    <div id="tabOverview" style="padding-top: 20px;">
+                        <h4 style="margin-bottom: 16px; color: var(--text-main); font-family: var(--font-head);">Information</h4>
+                        <div class="journey-container" id="journeyContainer">
+                            <div class="journey-line"></div>
+                            <!-- Populated dynamically -->
+                            <div class="station-row passed">
+                                <div class="station-dot"></div>
+                                <div class="station-info">
+                                    <div class="station-name">Tracking Started</div>
+                                    <div class="station-time">Data from GPS</div>
+                                    <div class="station-status status-green">Active</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div id="routeInfoText" style="color: var(--text-sub); font-size: 0.95rem; line-height: 1.5;"></div>
+                    </div>
+
+                    <div id="tabPhotos" class="hidden" style="padding-top: 20px;">
+                        <div class="photo-grid" id="busPhotoGrid" style="display:grid; grid-template-columns: repeat(3, 1fr); gap:6px;">
+                            <div class="add-photo-btn" onclick="document.getElementById('photoUpload').click()">
+                                <i class="fa-solid fa-plus"></i><span style="font-size:0.7rem;">Add</span>
+                            </div>
+                            <div class="photo-item"><img src="https://images.unsplash.com/photo-1570125909232-eb263c188f7e?w=200"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+const DEVICE_ID = localStorage.getItem("deviceId") || crypto.randomUUID();
+    localStorage.setItem("deviceId", DEVICE_ID);
+
+    // --- 1. CONFIG & STATE ---
+    // Updated to your ngrok URL
+    const API_BASE = "https://awhirl-digestibly-refugio.ngrok-free.dev";
+
+    const state = {
+        isLoggedIn: false,
+        user: { name: "Mohit", email: "mohit@example.com", photo: "M" },
+        theme: "light",
+        mapType: "street",
+        location: { lat: 23.4938, lng: 79.9184, name: "Majholi" },
+        viewState: "list", // 'list', 'detail'
+        selectedType: null, // 'bus' or 'route'
+        selectedBus: null   // Added to track current bus for favorites
+    };
+
+    // --- HELPER FOR API CALLS (Fixes Ngrok Warning) ---
+    async function apiCall(endpoint, options = {}) {
+        const url = endpoint.startsWith("http") ? endpoint : `${API_BASE}${endpoint}`;
+
+        // Default headers to bypass ngrok warning page
+        const headers = {
+            "ngrok-skip-browser-warning": "true",
+            "Content-Type": "application/json",
+            ...options.headers
+        };
+
+        try {
+            const res = await fetch(url, { ...options, headers });
+            if (!res.ok) throw new Error(`API Error: ${res.status}`);
+            return await res.json();
+        } catch (e) {
+            console.error(`Failed to fetch ${endpoint}:`, e);
+            return null; // Return null on error to prevent crashes
+        }
+    }
+
+    // --- 2. MAP SETUP ---
+    const map = L.map('map', { zoomControl: false, attributionControl: false }).setView([state.location.lat, state.location.lng], 14);
+
+    const layers = {
+        street: L.tileLayer('http://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', { maxZoom: 20, subdomains:['mt0','mt1','mt2','mt3'] }),
+        satellite: L.tileLayer('http://{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', { maxZoom: 20, subdomains:['mt0','mt1','mt2','mt3'] }),
+        hybrid: L.tileLayer('http://{s}.google.com/vt/lyrs=s,h&x={x}&y={y}&z={z}', { maxZoom: 20, subdomains:['mt0','mt1','mt2','mt3'] })
+    };
+    layers.street.addTo(map);
+
+    // Layers Groups
+    let busMarkers = L.layerGroup().addTo(map);
+    let routeLayer = L.layerGroup().addTo(map);
+    let annotationLayer = L.layerGroup().addTo(map);
+    let historyLayer = L.layerGroup().addTo(map);
+    let stopLayer = L.layerGroup().addTo(map);
+
+    // --- 3. API CONNECTIONS ---
+
+    // Get Stops
+    async function fetchStops(routeCode = null) {
+        const url = routeCode ? `/routes/${routeCode}/stops` : `/stops`;
+        const json = await apiCall(url);
+
+        if (json && json.stops) {
+            stopLayer.clearLayers();
+            json.stops.forEach(s => {
+                L.circleMarker([s.lat, s.lon], {
+                    radius: 5,
+                    color: '#f29900',
+                    fillOpacity: 1
+                })
+                .addTo(stopLayer)
+                .bindPopup(s.name);
+            });
+        }
+    }
+
+    let allBuses = [];
+
+    // A. Fetch Map Design (Annotations)
+    async function loadAnnotations() {
+        const json = await apiCall(`/annotations`);
+        if(json && json.success && json.data) {
+            renderAnnotations(json.data);
+        }
+    }
+
+    function renderAnnotations(elements) {
+        annotationLayer.clearLayers();
+        elements.forEach(d => {
+            const s = d.style;
+            let borderStyle = s.bg === 'transparent' ? 'none' : '1px solid rgba(0,0,0,0.1)';
+            let css = `transform: rotate(${s.rotate}deg) scale(${s.scale}); opacity: ${s.opacity}; color: ${s.color}; background: ${s.bg}; border-radius: ${s.radius}px; padding: 4px 8px; box-shadow: ${s.shadow ? '0 2px 4px rgba(0,0,0,0.4)' : 'none'}; border: ${borderStyle}; font-weight: ${s.bold ? '800' : 'normal'}; font-style: ${s.italic ? 'italic' : 'normal'}; white-space: nowrap;`;
+
+            let html = '';
+            if(d.type === 'text') {
+                const subsHtml = Array.isArray(d.content.sub) ? d.content.sub.map(txt => `<div class="map-text-sub" style="font-size: 10px; opacity:0.9;">${txt}</div>`).join('') : `<div class="map-text-sub">${d.content.sub}</div>`;
+                html = `<div class="map-element-wrapper" style="${css}"><div style="font-size: 13px; line-height:1.2;">${d.content.main}</div>${subsHtml}</div>`;
+            } else {
+                html = `<div class="map-element-wrapper" style="${css}; width: 30px; height: 30px; justify-content:center;"><div style="font-size: 20px;">${d.content.main}</div></div>`;
+            }
+            L.marker([d.lat, d.lng], { icon: L.divIcon({ className: 'custom-dummy', html: html, iconSize: [0,0] }) }).addTo(annotationLayer);
+        });
+    }
+
+    // B. Fetch Live Buses
+    async function fetchLiveBuses() {
+        const data = await apiCall(`/active-drivers`);
+        if (data && data.drivers) {
+            allBuses = data.drivers || [];
+
+            // Only update markers if we are in "All Buses" mode
+            if(document.getElementById('chipAll').classList.contains('active')) {
+                updateBusMarkers();
+                renderBusList(allBuses);
+            }
+        }
+    }
+
+    function updateBusMarkers() {
+        busMarkers.clearLayers();
+        allBuses.forEach(b => {
+            const icon = L.divIcon({
+                className: 'custom-bus-marker',
+                html: `<div style="background:#1a73e8; width:36px; height:36px; border-radius:50%; border:2px solid white; display:flex; justify-content:center; align-items:center; color:white; box-shadow:0 2px 5px rgba(0,0,0,0.3)"><i class="fa-solid fa-bus"></i></div>`,
+                iconSize: [36, 36], iconAnchor: [18, 18]
+            });
+            const m = L.marker([b.lat, b.lon], {icon:icon})
+                        .addTo(busMarkers)
+                        .on('click', (e) => { L.DomEvent.stopPropagation(e); selectBus(b); });
+        });
+    }
+
+    // C. Fetch Routes
+    async function fetchRoutes() {
+        const json = await apiCall(`/routes`);
+        routeLayer.clearLayers();
+
+        if(json && json.routes) {
+            json.routes.forEach(r => {
+                L.polyline(r.coordinates, { color: r.color || '#1a73e8', weight: 6, opacity: 0.8 })
+                    .addTo(routeLayer)
+                    .on('click', (e) => { L.DomEvent.stopPropagation(e); selectRoute(r, e.target); });
+            });
+        }
+    }
+
+    // D. Fetch History (Trail)
+    async function fetchHistory(vehicleId) {
+        const json = await apiCall(`/history/${vehicleId}`);
+        historyLayer.clearLayers();
+
+        if(json && json.trail) {
+            const latlngs = json.trail.map(t => [t.lat, t.lon]);
+            json.trail.forEach(t => {
+                L.circleMarker([t.lat, t.lon], { radius: 2, color: '#999', opacity: 0.5 }).addTo(historyLayer);
+            });
+            L.polyline(latlngs, { color: '#666', weight: 2, dashArray: '5, 10' }).addTo(historyLayer);
+        }
+    }
+
+    // --- 4. NAVIGATION LOGIC ---
+
+    function setNavState(mode) {
+        state.viewState = mode;
+        const navIcon = document.querySelector('#navIconBtn i');
+
+        if (mode === 'detail' || mode === 'search') {
+            navIcon.classList.remove('fa-bars');
+            navIcon.classList.add('fa-arrow-left');
+        } else {
+            navIcon.classList.remove('fa-arrow-left');
+            navIcon.classList.add('fa-bars');
+        }
+    }
+
+    function handleNavIconClick() {
+        if (state.viewState === 'detail' || state.viewState === 'search') {
+            handleBackAction();
+        } else {
+            toggleDrawer();
+        }
+    }
+
+    function handleBackAction() {
+        // Priority 1: Overlays
+        if(document.getElementById('sideDrawer').classList.contains('active')) { toggleDrawer(); return; }
+        if(document.getElementById('settingsModal').classList.contains('active')) { closeSettings(); return; }
+        if(document.getElementById('profileDropdown').classList.contains('active')) { toggleProfileMenu(); return; }
+
+        // Priority 2: Detail Views (Bus or Route)
+        if (state.viewState === 'detail') {
+            showAllBuses(); // Go back to list
+            historyLayer.clearLayers(); // Clear bus trail
+            state.selectedType = null;
+            state.selectedBus = null;
+            return;
+        }
+
+        // Priority 3: Expanded Sheet in List View
+        const sheet = document.getElementById('bottomSheet');
+        if (state.viewState === 'list' && (sheet.style.transform === 'translateY(0px)' || sheet.style.transform === '')) {
+            toggleSheet();
+            return;
+        }
+
+        // Default
+        setNavState('list');
+    }
+
+    // GLOBAL CLICK HANDLER
+    map.on('click', function() {
+        handleBackAction();
+    });
+
+    function handleSearchFocus() {
+        setNavState('search');
+        const sheet = document.getElementById('bottomSheet');
+        if(sheet.style.transform !== 'translateY(0px)') toggleSheet();
+    }
+
+    // --- 5. UI CORE FUNCTIONS ---
+
+    function renderBusList(list) {
+        const c = document.getElementById('busListContainer');
+        c.innerHTML='';
+        if(!list || list.length === 0) {
+            c.innerHTML = '<div style="text-align:center; padding:20px; color:#999;">No active buses found nearby.</div>';
+            return;
+        }
+        list.forEach(b => {
+            const d=document.createElement('div'); d.className='bus-card'; d.onclick=()=>selectBus(b);
+            d.innerHTML=`<div class="bus-icon-circle"><i class="fa-solid fa-bus"></i></div><div><div style="font-weight:500; font-size:1.05rem; color:var(--text-main);">${b.vehicleId}</div><div style="font-size:0.85rem; color:var(--text-sub);">Speed: ${b.speed?.toFixed(1)} km/h</div></div>`;
+            c.appendChild(d);
+        });
+    }
+
+    async function selectBus(b) {
+        state.selectedBus = b; // SAVE TO STATE
+        state.selectedType = 'bus';
+
+        // Fetch additional profile data
+        const d = await apiCall(`/buses/${b.vehicleId}/profile`);
+
+        if(d && d.profile) {
+            document.getElementById('detailBusSub').innerText = d.profile.type || "Bus Service";
+            document.querySelector('.stat-item:nth-child(3) .stat-val').innerText = `₹${d.profile.fare || '--'}`;
+        }
+
+        setNavState('detail');
+        document.getElementById('allBusesView').classList.add('hidden');
+        document.getElementById('singleBusView').classList.remove('hidden');
+        document.getElementById('fabContainer').style.bottom='100px';
+        document.getElementById('bottomSheet').style.transform='translateY(0)';
+
+        // Populate Detail View for Bus
+        document.getElementById('detailBusTitle').innerText = b.vehicleId;
+        document.getElementById('detailBusSub').innerText = "Bus Service • Live Tracking";
+        document.getElementById('detailSpeed').innerHTML = `${b.speed?.toFixed(1)} <small>km/h</small>`;
+        document.getElementById('detailSpeedLabel').innerText = "Speed";
+        document.getElementById('detailDistance').innerText = "Live";
+        document.getElementById('detailDistanceLabel').innerText = "Tracking";
+
+        // Show Journey, Hide Text
+        document.getElementById('journeyContainer').classList.remove('hidden');
+        document.getElementById('routeInfoText').classList.add('hidden');
+
+        // Reset Heart Icon
+        const favIcon = document.getElementById('busFavIcon');
+        favIcon.className = 'fa-regular fa-heart';
+        favIcon.style.color = '';
+
+        fetchHistory(b.vehicleId); // Load dots
+        map.setView([b.lat, b.lon], 16);
+        switchTab('overview');
+    }
+
+    async function selectRoute(r, polylineLayer) {
+        state.selectedType = 'route';
+
+        // Load stops for this route
+        fetchStops(r.code);
+
+        // Load active buses on this route
+        const d = await apiCall(`/routes/${r.code}/buses`);
+        renderBusList(d ? d.buses : []);
+
+        setNavState('detail');
+        document.getElementById('allBusesView').classList.add('hidden');
+        document.getElementById('singleBusView').classList.remove('hidden');
+        document.getElementById('fabContainer').style.bottom='100px';
+        document.getElementById('bottomSheet').style.transform='translateY(0)';
+
+        // Populate Detail View for Route
+        document.getElementById('detailBusTitle').innerText = r.name || "Route";
+        document.getElementById('detailBusSub').innerText = `Code: ${r.code || 'N/A'}`;
+
+        // Change Stats for Route
+        document.getElementById('detailSpeed').innerHTML = r.distance || "--";
+        document.getElementById('detailSpeedLabel').innerText = "Distance";
+
+        document.getElementById('detailDistance').innerText = r.duration || "--";
+        document.getElementById('detailDistanceLabel').innerText = "Duration";
+
+        // Hide Journey Line (No live stops), Show Info
+        document.getElementById('journeyContainer').classList.add('hidden');
+        document.getElementById('routeInfoText').classList.remove('hidden');
+        document.getElementById('routeInfoText').innerText = "This is a fixed route path. Click on 'Stops' to see bus stops along this way.";
+
+        // Zoom to route
+        if(polylineLayer) {
+            map.fitBounds(polylineLayer.getBounds(), {padding: [50, 50]});
+        }
+        switchTab('overview');
+    }
+
+    // SEARCH LISTENER
+    document.getElementById("globalSearch").addEventListener("keyup", async e => {
+        const q = e.target.value.trim();
+        if(q.length < 2) return;
+
+        const data = await apiCall(`/search?q=${q}`);
+
+        if (data) {
+            if(data.buses?.length) renderBusList(data.buses);
+            else if(data.routes?.length) {
+                // Keep the search box active but show route hints in list (simplified)
+                renderBusList([]); // Clear bus list for now
+                // Ideally, render routes into the list, but for now we just clear
+            }
+        }
+    });
+
+    function showAllBuses() {
+        setNavState('list');
+        document.getElementById('allBusesView').classList.remove('hidden');
+        document.getElementById('singleBusView').classList.add('hidden');
+        document.getElementById('bottomSheet').style.transform='translateY(0)';
+        document.getElementById('fabContainer').style.bottom='400px';
+
+        document.querySelectorAll('.chip').forEach(c=>c.classList.remove('active'));
+        document.getElementById('chipAll').classList.add('active');
+
+        // Reset to default state
+        routeLayer.clearLayers();
+        fetchLiveBuses();
+        stopLayer.clearLayers(); // Clear stops when going back
+    }
+
+    async function loadFavorites() {
+        const json = await apiCall(`/favorites/${DEVICE_ID}`);
+        if(json && json.favorites) {
+            const ids = json.favorites.map(f => f.vehicleId);
+            const favBuses = allBuses.filter(b => ids.includes(b.vehicleId));
+            renderBusList(favBuses);
+        }
+    }
+
+    function filterBuses() {
+        const txt = document.getElementById('busSearchInput').value.toLowerCase();
+        const filtered = allBuses.filter(b => b.vehicleId.toLowerCase().includes(txt));
+        renderBusList(filtered);
+    }
+
+    function filterMap(t) {
+        document.querySelectorAll('.chip').forEach(c=>c.classList.remove('active'));
+
+        if(t==='stops'){
+            document.querySelectorAll('.chip')[1].classList.add('active');
+            stopLayer.clearLayers();
+            busMarkers.clearLayers();
+            routeLayer.clearLayers();
+            fetchStops();
+        } else if(t==='routes') {
+            document.querySelectorAll('.chip')[2].classList.add('active');
+            busMarkers.clearLayers();
+            fetchRoutes();
+        } else {
+            document.getElementById('chipAll').classList.add('active');
+            showAllBuses();
+        }
+    }
+
+    // --- Standard UI Toggles ---
+    function toggleLogin() { state.isLoggedIn = !state.isLoggedIn; updateAuthUI(); toggleDrawer(); }
+    function updateAuthUI() {
+        const h = document.getElementById('drawerHeader');
+        const dName = document.getElementById('dropdownName');
+        const btn = document.getElementById('authActionBtn');
+        const icon = document.getElementById('profileIconContent');
+        if(state.isLoggedIn) {
+            h.innerHTML = `<div style="display:flex; gap:12px; align-items:center;"><div class="profile-initial" style="border:2px solid #fff;">${state.user.photo}</div><div><div style="font-weight:700;">${state.user.name}</div><div style="font-size:0.85rem; opacity:0.8;">${state.user.email}</div></div></div>`;
+            icon.innerHTML = `<div class="profile-initial">${state.user.photo}</div>`;
+            dName.innerText = state.user.name;
+            btn.innerHTML = '<i class="fa-solid fa-arrow-right-from-bracket"></i> Logout';
+        } else {
+            h.innerHTML = `<div>Welcome to BusMitra</div><button class="drawer-login-btn" onclick="toggleLogin()">Login with Google</button>`;
+            icon.innerHTML = `<i class="fa-regular fa-user" style="color:var(--text-sub)"></i>`;
+            dName.innerText = "Guest User";
+            btn.innerHTML = '<i class="fa-solid fa-arrow-right-to-bracket"></i> Login';
+        }
+    }
+    function toggleProfileMenu() { document.getElementById('profileDropdown').classList.toggle('active'); }
+    function toggleTheme() {
+        state.theme = state.theme === 'light' ? 'dark' : 'light';
+        document.documentElement.setAttribute('data-theme', state.theme);
+        document.getElementById('themeLabel').innerText = state.theme === 'light' ? 'Light' : 'Dark Mode';
+    }
+    function openSettings() { document.getElementById('settingsModal').classList.add('active'); document.getElementById('sideDrawer').classList.remove('active'); }
+    function closeSettings() { document.getElementById('settingsModal').classList.remove('active'); }
+    function changeMapType(v) { state.mapType = v; Object.values(layers).forEach(l=>map.removeLayer(l)); layers[v].addTo(map); }
+    function toggleMapLayerManual() { const n = state.mapType === 'street' ? 'satellite' : 'street'; changeMapType(n); document.getElementById('mapTypeSelect').value = n; }
+    function handleLocationChange(v) { if(v==='custom') document.getElementById('customLocInputs').classList.remove('hidden'); else { document.getElementById('customLocInputs').classList.add('hidden'); changeDefaultLocation(v); } }
+    function applyCustomLocation() { const lat = parseFloat(document.getElementById('customLat').value); const lng = parseFloat(document.getElementById('customLng').value); if(!isNaN(lat) && !isNaN(lng)) { state.location = {lat, lng}; map.setView([lat,lng], 13); closeSettings(); } }
+    function changeDefaultLocation(k) { const locs = { majholi: [23.4938, 79.9184], jabalpur: [23.1815, 79.9864] }; if(locs[k]) { state.location={lat:locs[k][0], lng:locs[k][1]}; map.setView(locs[k], 14); } }
+    function recenterMap() { map.setView([state.location.lat, state.location.lng], 14); }
+
+    async function toggleBusFav() {
+        if (!state.selectedBus) return; // Guard clause
+
+        const i = document.getElementById('busFavIcon');
+        const isSaving = i.classList.contains('fa-regular'); // If currently regular, we are saving
+
+        // Optimistic UI Update
+        i.classList.add('animate-pop');
+        setTimeout(()=>i.classList.remove('animate-pop'), 300);
+
+        if (isSaving) {
+            i.classList.replace('fa-regular','fa-solid');
+            i.style.color='#e74c3c';
+        } else {
+            i.classList.replace('fa-solid','fa-regular');
+            i.style.color='';
+        }
+
+        // API Call
+        await apiCall(`/favorites/toggle`, {
+            method: "POST",
+            body: JSON.stringify({
+                deviceId: DEVICE_ID,
+                vehicleId: state.selectedBus.vehicleId
+            })
+        });
+    }
+
+    function handlePhotoUpload(i) { if(i.files[0]){ const r=new FileReader(); r.onload=e=>{ const d=document.createElement('div'); d.className='photo-item'; d.innerHTML=`<img src="${e.target.result}">`; document.getElementById('busPhotoGrid').appendChild(d); }; r.readAsDataURL(i.files[0]); } }
+    function toggleDrawer(){ document.getElementById('sideDrawer').classList.toggle('active'); document.querySelector('.side-drawer-overlay').classList.toggle('active'); }
+    function toggleSheet(){ const s=document.getElementById('bottomSheet'); s.style.transform = s.style.transform==='translateY(85%)' ? 'translateY(0)' : 'translateY(85%)'; }
+    function switchTab(t) { document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active')); event?.target.classList.add('active'); ['Overview','Photos'].forEach(x=>document.getElementById('tab'+x).classList.add('hidden')); document.getElementById('tab'+(t.charAt(0).toUpperCase()+t.slice(1))).classList.remove('hidden'); }
+
+    // Handle Sheet Drag
+    const handle = document.querySelector('.sheet-handle-bar');
+    let startY=0;
+    handle.addEventListener('touchstart', e=>startY=e.touches[0].clientY, {passive:true});
+    handle.addEventListener('touchend', e=> { if(e.changedTouches[0].clientY - startY > 50) { if(!document.getElementById('singleBusView').classList.contains('hidden')) showAllBuses(); else toggleSheet(); } else if(e.changedTouches[0].clientY - startY < -50) toggleSheet(); });
+
+    // --- INIT ---
+    updateAuthUI();
+    loadAnnotations();
+    fetchLiveBuses();
+    loadFavorites(); // Load favs on startup
+    setInterval(fetchLiveBuses, 3000);
+
+    // --- 🕵️‍♀️ DEBUG: SYSTEM HEALTH CHECK ---
+    async function checkSystemHealth() {
+        console.log("%c🏥 STARTING SYSTEM HEALTH CHECK...", "color: blue; font-weight: bold; font-size: 14px;");
+
+        const checks = [
+            { name: "Live Drivers", url: "/active-drivers" },
+            { name: "All Stops", url: "/stops" },
+            { name: "All Routes", url: "/routes" },
+            { name: "Map Design", url: "/annotations" },
+            // { name: "Search Test", url: "/search?q=mp" } // Optional
+        ];
+
+        for (const check of checks) {
+            try {
+                const start = Date.now();
+                const res = await apiCall(check.url); // Using our fixed apiCall function
+                const time = Date.now() - start;
+
+                if (res) {
+                    // Data count check
+                    let count = 0;
+                    if(res.drivers) count = res.drivers.length;
+                    else if(res.stops) count = res.stops.length;
+                    else if(res.routes) count = res.routes.length;
+                    else if(res.data) count = res.data.length; // annotations
+
+                    if(count > 0) {
+                         console.log(`%c✅ ${check.name}: OK (${count} items) - ${time}ms`, "color: green");
+                    } else {
+                         console.log(`%c⚠️ ${check.name}: OK but EMPTY (0 items). Need Data in DB!`, "color: orange");
+                    }
+                } else {
+                    console.log(`%c❌ ${check.name}: FAILED (Network/Ngrok Error)`, "color: red");
+                }
+            } catch (e) {
+                console.log(`%c❌ ${check.name}: CRASHED - ${e.message}`, "color: red");
+            }
+        }
+        console.log("%c🏁 HEALTH CHECK COMPLETE", "color: blue; font-weight: bold;");
+    }
+
+    // Run this once on load
+    setTimeout(checkSystemHealth, 2000);
+    </script>
+</body>
+</html>
